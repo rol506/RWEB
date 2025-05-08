@@ -10,7 +10,7 @@
 
     <nav>
       {% for m in menu %}
-        <div><a href="{{m.url}}" class="anim">{{m.title}}</a></div>
+      <div><a href="{{m.url}}" class="anim">{{m.title}}-{{currentURL}}</a></div>
       {% endfor %}
     </nav>
     <h1>Some value ** 2 = {{some_value ** 2}}</h1> 

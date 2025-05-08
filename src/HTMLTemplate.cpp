@@ -82,20 +82,94 @@ namespace rweb
   }
 
   //DEPRECATED!
+  //"pos_out" - position of the found char
   //Returns first variable found in 's'.
-  static std::string getVariable(const std::string& s)
+  static std::string getVariable(const std::string& s, std::size_t start=0, std::size_t* pos_out=nullptr)
   {
-    auto pos1 = s.find("{{")+2;
-    auto pos2 = s.substr(pos1).find("}}");
-    if (pos1 == std::string::npos || pos2 == std::string::npos)
+    auto pos1 = s.find("{{", start)+2;
+    if (pos1 == std::string::npos+2)
     {
       return "";
     }
-    return s.substr(pos1, pos2);
+    auto pos2 = s.find("}}", pos1-2);
+    if (pos_out)
+    {
+      *pos_out = pos1-2;
+    }
+    return s.substr(pos1, pos2-pos1);
   }
 
   void HTMLTemplate::renderJSON(const nlohmann::json& json)
   {
+    std::size_t start = 0;
+    std::string var = "non-empty-string";
+    while (var != "")
+    {
+      var = getVariable(m_html, start, &start);
+      std::string name = trim(var);
+      std::string body = name;
+      auto vec = split(name, " +-/*");
+      bool useMath = true;
+      for (auto l: vec)
+      {
+        std::string res = "";
+        auto value = json.find(l);
+        if (value != json.end())
+        {
+          if (value->is_string())
+          {
+            res = *value;
+            useMath = false;
+          } else if (value->is_number_integer() || value->is_number_unsigned())
+          {
+            res = std::to_string((long long)*value);
+          } else if (value->is_number_float())
+          {
+            std::stringstream ss;
+            ss << (float)*value;
+            res = ss.str();
+          } else if (value->is_array())
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] Failed to set array value for " << name << colorize(NC) << "\n";
+            res = "";
+            useMath = false;
+            m_responce = HTTP_500;
+            return;
+          }
+          else {
+            std::cerr << colorize(RED) << "[TEMPLATE] Value of " << name << " is unsupported type!" << colorize(NC) << "\n";
+            res = "";
+            useMath = false;
+            m_responce = HTTP_500;
+            return;
+          }
+
+          body = replace(body, l, res);
+        }
+      }
+
+      if (useMath)
+      {
+        if (auto f = std::find_if(body.begin(), body.end(), [](char c){return isalpha(c);}) == body.end())
+        {
+          //math does not have any variables -> ok
+          double r = calculate(body);
+          std::stringstream stream;
+          //stream << std::fixed << std::setprecision(0) << r;
+          stream << (float)r;
+          body = stream.str();
+        } else {
+          std::cout << colorize(RED) << "[TEMPLATE] Cannot form a math statement. Found undeclared variable in " << '(' << body << ')' << colorize(NC) << "\n";
+          //body = "";
+          //m_responce = HTTP_500;
+          start++;
+          continue;
+        }
+      }
+
+      m_html = replace(m_html, "{{" + var + "}}", body);
+    }
+
     std::string html = m_html;
     size_t sz = html.size();
 
@@ -721,81 +795,7 @@ namespace rweb
 
       } else if (c == '{' && m_html[i+1] == '{') //variable
       {
-        std::string name;
-        size_t len = 0;
-        std::istringstream ss(m_html.substr(i+2));
-        std::getline(ss, name, '}');
-        //len must be calculated before trimming
-        len = name.size();
-        name = trim(name);
-        std::string body = name;
-        auto vec = split(name, " +-/*");
-        bool useMath = true;
-        for (auto l: vec)
-        {
-          std::string res = "";
-          auto value = json.find(l);
-          if (value != json.end())
-          {
-            if (value->is_string())
-            {
-              res = *value;
-              useMath = false;
-            } else if (value->is_number_integer() || value->is_number_unsigned())
-            {
-              res = std::to_string((long long)*value);
-            } else if (value->is_number_float())
-            {
-              std::stringstream ss;
-              ss << (float)*value;
-              res = ss.str();
-            } else if (value->is_array())
-            {
-              std::cerr << colorize(RED) << "[TEMPLATE] Failed to set array value for " << name << colorize(NC) << "\n";
-              res = "";
-              useMath = false;
-              m_responce = HTTP_500;
-              return;
-            }
-            else {
-              std::cerr << colorize(RED) << "[TEMPLATE] Value of " << name << " is unsupported type!" << colorize(NC) << "\n";
-              res = "";
-              useMath = false;
-              m_responce = HTTP_500;
-              return;
-            }
-
-            body = replace(body, l, res);
-          } else {
-          }
-        }
-
-        if (useMath)
-        {
-          if (auto f = std::find_if(body.begin(), body.end(), [](char c){return isalpha(c);}) == body.end())
-          {
-            //math does not have any variables -> ok
-            double r = calculate(body);
-            std::stringstream stream;
-            //stream << std::fixed << std::setprecision(0) << r;
-            stream << (float)r;
-            body = stream.str();
-          } else {
-            std::cout << colorize(RED) << "[TEMPLATE] Cannot form a math statement. Found undeclared variable in " << '(' << body << ')' << colorize(NC) << "\n";
-            body = "";
-            m_responce = HTTP_500;
-            return;
-          }
-        }
-
-        html.replace(i, len+4, body);
-        
-        m_html = html;
-        i = 0;
-        sz = m_html.size();
-        currLine = 1;
-        currChar = 1;
-      }
+      } 
     }
   }
 

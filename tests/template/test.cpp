@@ -11,6 +11,7 @@ int main()
   rweb::HTMLTemplate temp = rweb::createTemplate("index.html", rweb::HTTP_200);
 
   nlohmann::json json = nlohmann::json::parse(rweb::getFileString("../menu.json"));
+  json["currentURL"] = "/ladno";
 
   temp.renderJSON(json);
 
