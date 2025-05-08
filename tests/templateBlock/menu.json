@@ -1,0 +1,18 @@
+{
+  "menu":
+  [
+    {
+      "url": "/home",
+      "title": "Главная",
+      "la": 2
+    },
+    {
+      "url": "/about",
+      "title": "О нас",
+      "la": 3
+    }
+  ],
+  "some_value": 2,
+  "ladno": 1,
+  "st": "ok"
+}

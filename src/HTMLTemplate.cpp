@@ -101,11 +101,131 @@ namespace rweb
 
   void HTMLTemplate::renderJSON(const nlohmann::json& json)
   {
+
+    //process loadblock
+    {
+      std::size_t start = 0;
+      std::size_t fnd = m_html.find("{%", start);
+      while (true)
+      {
+        std::size_t fnd2 = m_html.find("%}", start);
+        if (fnd2 == std::string::npos)
+        {
+          break;
+        }
+        std::string block = m_html.substr(fnd+2, fnd2-2-fnd);
+        std::string content = trim(block).substr(10, trim(block).size()-11);
+        if (trim(block).substr(0, 9) == "loadblock")
+        {
+          std::string filename = "";
+          std::string blockName = "";
+          std::size_t offset = trim(content).find("\""); //space char offset
+          if (trim(content)[offset] != '"')
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] loadblock syntax error! filename must be enclosed in the double quotes!" << colorize(NC) << "\n";
+            m_responce = HTTP_500;
+            return;
+          }
+          std::stringstream ss;
+          ss << trim(content.substr(offset+1));
+          std::getline(ss, filename, '"');
+          auto v = split(content.substr(1, content.size()-1), ",");
+          if (v.size() < 2)
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] loadblock syntax error! block name must be sepereted by comma!" << colorize(NC) << "\n";
+            m_responce = HTTP_500;
+            return;
+          }
+          blockName = v[1];
+
+          std::string file = getFileString(filename);
+          if (file.empty())
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] Cannot open file " << '"' << filename << '"' << " to find the block " << '"' << blockName << '"'
+              << colorize(NC) << "\n";
+            m_responce = HTTP_500;
+            return;
+          }
+
+          std::string result = "";
+          {
+            std::size_t start = 0;
+            std::size_t fnd = 0;
+            while (fnd != std::string::npos)
+            {
+              fnd = file.find("{%", start);
+              if (fnd == std::string::npos)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the block " << '"' << blockName << '"' << " in the " << '"' << filename << '"'
+                  << colorize(NC) << "\n";
+                m_responce = HTTP_500;
+                return;
+              }
+              std::size_t fnd2 = file.find("%}", fnd);
+              if (fnd2 == std::string::npos)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the block " << '"' << blockName << '"' << " in the " << '"' << filename << '"'
+                  << colorize(NC) << "\n";
+                m_responce = HTTP_500;
+                return;
+              }
+
+              auto v = split(file.substr(fnd+2, fnd2-2-fnd), " ");
+              if (v.size() < 2)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Cannot find block in the " << '"' << filename << '"' << "! Syntax error in the block declaration: "
+                  << file.substr(fnd+2, fnd2-2-fnd) << colorize(NC) << "\n";
+                m_responce = HTTP_500;
+                return;
+              }
+
+              if (v[1] != blockName)
+              {
+                start++;
+                continue;
+              }
+
+              //get result
+              std::size_t endblock_pos = 0;
+              std::size_t endblock_len = 0;
+              if (!findOperator(file, fnd, "endblock", &endblock_pos, &endblock_len))
+              { 
+                std::cerr << colorize(RED) << "[TEMPLATE] Cannot find block in the " << '"' << filename << '"' << "! Cannot find endblock!" << colorize(NC) << "\n"; 
+                m_responce = HTTP_500;
+                return;
+              }
+
+              result = file.substr(fnd2+2, endblock_pos-fnd2-2);
+              break;
+            }
+            if (result == "")
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the block " << '"' << blockName << '"' << " in the " << '"' << filename << '"'
+                << colorize(NC) << "\n";
+              m_responce = HTTP_500;
+              return;
+            }
+          }
+
+          m_html.replace(fnd, fnd2-fnd+2, trim(result));
+          fnd = m_html.find("{%", start);
+          start = 0;
+        } else {
+          break;
+        }
+      }
+    }
+
     std::size_t start = 0;
     std::string var = "non-empty-string";
     while (var != "")
     {
       var = getVariable(m_html, start, &start);
+      if (var == "")
+      {
+        start++;
+        continue;
+      }
       std::string name = trim(var);
       std::string body = name;
       auto vec = split(name, " +-/*");
