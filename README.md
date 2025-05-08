@@ -12,8 +12,9 @@ CMakeLists.txt and .gitignore are config files
 #### Example files
 Theese files may be safely deleted. They are just examples and tests
 ```
-res/ - resource folder for framework
+res/ - resource folder for examples
 tests/ - automatic tests folder
-test.cpp - entry point for C++ and routes config
+app.cpp - C++ example server
+menu.json - example config
 README.md - this README file
 ```
