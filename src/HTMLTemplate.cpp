@@ -159,7 +159,7 @@ namespace rweb
           stream << (float)r;
           body = stream.str();
         } else {
-          std::cout << colorize(RED) << "[TEMPLATE] Cannot form a math statement. Found undeclared variable in " << '(' << body << ')' << colorize(NC) << "\n";
+          //std::cout << colorize(RED) << "[TEMPLATE] Cannot form a math statement. Found undeclared variable in " << '(' << body << ')' << colorize(NC) << "\n";
           //body = "";
           //m_responce = HTTP_500;
           start++;
