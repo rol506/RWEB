@@ -1,5 +1,6 @@
 #include <RWEB.h>
 
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -7,7 +8,6 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
 
 #include "../include/Socket.h"
 #include "HTMLTemplate.h"
@@ -23,6 +23,7 @@ namespace rweb
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static int serverPort = 4221;
   static bool serverDebugMode = false;
+  static bool serverProfiling = false;
   static bool serverCompression = false; //not supported yet
   static bool shouldClose = false;
   //static int sockfd; //server socket file descriptor
@@ -189,7 +190,7 @@ namespace rweb
     return shouldClose;
   }
 
-  void setShouldClose(bool _shouldClose)
+  void setShouldClose(const bool _shouldClose)
   {
     shouldClose = _shouldClose;
   }
@@ -197,6 +198,16 @@ namespace rweb
   bool getDebugState()
   {
     return serverDebugMode;
+  }
+
+  void setProfilingMode(const bool enabled)
+  {
+    serverProfiling = enabled;
+  }
+
+  bool getProfilingMode()
+  {
+    return serverProfiling;
   }
 
   const char *colorize(int color) {
@@ -274,6 +285,7 @@ namespace rweb
 
   static void handleClient(const Request r, const SOCKFD newsockfd)
   {
+    const std::chrono::time_point startTime = std::chrono::high_resolution_clock::now(); //for profiling
     std::cout << colorize(NC);
     std::string res;
     int n = 0;
@@ -329,6 +341,12 @@ namespace rweb
         res = temp.getStatusResponce();
       }
       std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9);
+    }
+
+    if (getDebugState() && getProfilingMode())
+    {
+      const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
+      std::cout << colorize(NC) << "[PROFILING] Request processing time: " << timeDelta << "ms\n";
     }
 
     //send result

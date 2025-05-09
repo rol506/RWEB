@@ -44,8 +44,10 @@ namespace rweb {
   std::string getResourcePath();
   int getPort();
   bool getShouldClose();
-  void setShouldClose(bool _shouldClose);
+  void setShouldClose(const bool _shouldClose);
   bool getDebugState();
+  void setProfilingMode(const bool enabled);
+  bool getProfilingMode();
   void setResourcePath(const std::string resPath);
   void setPort(const int port);
   void addRoute(const std::string& path, const HTTPCallback callback);

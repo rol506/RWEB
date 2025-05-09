@@ -24,6 +24,7 @@ int main()
   }
 
   rweb::setPort(4221);
+  rweb::setProfilingMode(true);
 
   rweb::addRoute("/", [](const rweb::Request r){return rweb::redirect("/index");});
   rweb::addRoute("/index", &homePage);
