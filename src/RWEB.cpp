@@ -307,10 +307,10 @@ namespace rweb
       if (it2 != serverResources.end())
       {
         res = sendFile(HTTP_200, it2->second.first, it2->second.second);
-        std::cout << "[RESPONCE] " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9);
+        std::cout << "[RESPONCE] " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
       } else { 
         res = HTTP_404 + "\r\n";
-        std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9);
+        std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
       }
     } else {
       HTMLTemplate temp = it->second(r);
@@ -340,13 +340,15 @@ namespace rweb
         std::cout << colorize(RED);
         res = temp.getStatusResponce();
       }
-      std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9);
+      std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
     }
 
     if (getDebugState() && getProfilingMode())
     {
       const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
-      std::cout << colorize(NC) << "[PROFILING] Request processing time: " << timeDelta << "ms\n";
+      std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
+    } else {
+      std::cout << "\n";
     }
 
     //send result
