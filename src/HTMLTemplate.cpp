@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 namespace rweb
 { 
@@ -34,31 +35,29 @@ namespace rweb
   //'len_out' will be length of found substring.
   static bool findOperator(const std::string& s, const std::size_t from, const std::string& target, std::size_t* pos_out, std::size_t* len_out)
   {
-    auto pos1 = s.find("{%", from);
-    auto pos2 = s.find("%}", pos1)+2;
-    std::string op = trim(s.substr(pos1+2, pos2-pos1-4));
-    while ((trim(op) != target || op != "") || (pos1 == std::string::npos))
-    {
-      pos1 = s.find("{%", pos1+1);
-      pos2 = s.find("%}", pos1)+2;
-      if (pos1 == std::string::npos)
+    try {
+      auto pos1 = from-1;
+      auto pos2 = from;
+      std::string op = "";
+      while (true)
       {
-        return false;
+        pos1 = s.find("{%", pos1+1);
+        pos2 = s.find("%}", pos1)+2;
+        if (pos1 == std::string::npos || pos2 == std::string::npos+2)
+        {
+          return false;
+        }
+        op = trim(s.substr(pos1+2, pos2-pos1-4));
+        if (op.substr(0, target.size()) == target)
+        {
+          *pos_out = pos1;
+          *len_out = pos2-pos1;
+          return true;
+        }
       }
-      op = trim(s.substr(pos1+2, pos2-pos1-4));
-      if (op == target)
-      {
-        *pos_out = pos1;
-        *len_out = pos2-pos1;
-        return true;
-      }
-    }
 
-    if (op != "")
+    } catch (std::out_of_range& e)
     {
-      *pos_out = pos1;
-      *len_out = pos2-pos1;
-      return true;
     }
 
     return false;
@@ -102,6 +101,19 @@ namespace rweb
   void HTMLTemplate::renderJSON(const nlohmann::json& json)
   {
 
+    std::size_t pos = 0;
+    std::size_t len = 0;
+    while (findOperator(m_html, 0, "block", &pos, &len))
+    {
+      //std::cout << "Found: " << m_html.substr(pos, len) << "\n";
+      m_html.replace(pos, len, "");
+    }
+    while (findOperator(m_html, 0, "endblock", &pos, &len))
+    {
+      //std::cout << "Found: " << m_html.substr(pos, len) << "\n";
+      m_html.replace(pos, len, "");
+    }
+
     //process loadblock
     {
       std::size_t start = 0;
@@ -114,9 +126,9 @@ namespace rweb
           break;
         }
         std::string block = m_html.substr(fnd+2, fnd2-2-fnd);
-        std::string content = trim(block).substr(10, trim(block).size()-11);
-        if (trim(block).substr(0, 9) == "loadblock")
+        if (trim(block).size() > 9 && trim(block).substr(0, 9) == "loadblock")
         {
+          std::string content = trim(block).substr(10, trim(block).size()-11);
           std::string filename = "";
           std::string blockName = "";
           std::size_t offset = trim(content).find("\""); //space char offset
@@ -211,7 +223,12 @@ namespace rweb
           fnd = m_html.find("{%", start);
           start = 0;
         } else {
-          break;
+          start++;
+          if (fnd > m_html.size())
+          {
+            break;
+          }
+          continue;
         }
       }
     }

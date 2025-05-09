@@ -7,8 +7,10 @@
     <link href="/style.css" rel="stylesheet">
   </head>
   <body>
+    {% block test %}
     <aside>
       {% loadblock("base.html", nav) %}
     </aside>
+    {% endblock %}
   </body>
 </html>
