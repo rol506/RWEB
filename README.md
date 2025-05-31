@@ -18,5 +18,6 @@ app.cpp - C++ example server
 menu.json - example config
 README.md - this README file
 ```
+You can also delete automatic test settings from **CMakeLists.txt** (there is a mark in the file).
 
 Documentation - https://github.com/rol506/RWEB_Documentation
