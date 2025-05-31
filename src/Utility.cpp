@@ -1,7 +1,9 @@
 #include "../include/Utility.h"
 
 #include <iostream>
+#include <sstream>
 #include <cmath>
+#include <string>
 
 namespace rweb
 {
@@ -64,17 +66,146 @@ namespace rweb
       pos = cpy.find(from, pos+from.size());
     }
     return cpy;
-  } 
+  }
 
-  double calculate(const std::string& expression)
+  static bool isOperator(const char c) noexcept
+  {
+    return c == '/' || c == '*' || c == '+' || c == '-';
+  }
+
+  //int types:
+  //1 - operator
+  //2 - math
+  //3 - '('
+  //4 - ')'
+
+  static const std::string typeToString(const int type) noexcept
+  {
+    switch(type){
+      case 1:
+        return "OPERATOR";
+      case 2:
+        return "MATH";
+      case 3:
+        return "OPEN";
+      case 4:
+        return "CLOSE";
+    }
+
+    return "UNKNOWN";
+  }
+
+  static float getOperatorValue(const std::string& oper) noexcept
+  {
+    if (oper == "+")
+      return 1.1f;
+    if (oper == "-")
+      return 1.0f;
+    if (oper == "*")
+      return 2.1f;
+    if (oper == "/")
+      return 2.0f;
+    if (oper == "**")
+      return 3.1f;
+
+    std::cerr << colorize(RED) << "[CALC] Error! Cannot get operator value: " << '"' << oper << '"' << colorize(NC) << "\n";
+    return 0.0f;
+  }
+
+  static double process(const double left_operand, const double right_operand, const std::string& oper)
+  {
+    if (oper == "+")
+      return left_operand + right_operand;
+    if (oper == "-")
+      return left_operand - right_operand;
+    if (oper == "*")
+      return left_operand * right_operand;
+    if (oper == "/")
+      return left_operand / right_operand;
+    if (oper == "**")
+      return pow(left_operand, right_operand);
+
+    std::cerr << colorize(RED) << "[CALC] Failed to process operation! Unknown operator: " << '"' << oper << '"' << colorize(NC) << "\n";
+    return 0;
+  }
+
+  static double calculate(std::vector<std::pair<short, std::string>>& tokens, bool* is_ok)
+  {
+
+    for (int i=0;i<tokens.size();++i)
+    {
+      if (tokens.size() == 1)
+      {
+        if (tokens[0].first != 2)
+        {
+          if (is_ok)
+            *is_ok = false;
+          else
+            std::cerr << colorize(RED) << "[CALC] Error! Last token is not a math!" << colorize(NC) << "\n";
+          return 0;
+        }
+        return std::stod(tokens.begin()->second);
+      }
+
+      if (tokens[i].first == 2)
+        continue; 
+
+      if (tokens[i].first == 1)
+      {
+        if (i == 0 || tokens[i-1].first != 2) //error
+        {
+          if (is_ok)
+            *is_ok = false;
+          else
+            std::cerr << colorize(RED) << "[CALC] Error! Operator does not have left operand!" << colorize(NC) << "\n";
+
+          return 0;
+        }
+        if (i == tokens.size()-1 || tokens[i+1].first != 2) //error
+        {
+          if (is_ok)
+            *is_ok = false;
+          else
+            std::cerr << colorize(RED) << "[CALC] Error! Operator does not have a right operand!" << colorize(NC) << "\n";
+
+          return 0;
+        }
+
+        if (i+2 < tokens.size() && getOperatorValue(tokens[i].second) < getOperatorValue(tokens[i+2].second))
+        {
+          i++;
+          continue; //i += 2
+        }
+
+        double lv = stoi(tokens[i-1].second);
+        double rv = stoi(tokens[i+1].second);
+        double res = process(lv, rv, tokens[i].second);
+
+        tokens[i].first = 2;
+        std::stringstream ss;
+        ss << res;
+        tokens[i].second = ss.str();
+
+        tokens.erase(tokens.begin() + i-1);
+        tokens.erase(tokens.begin() + i);
+
+        i = -1;
+        continue;
+      }
+    }
+
+    return 0;
+  }
+
+  double calculate(const std::string& expression, bool* is_ok)
   {
     if (trim(expression) == "")
     {
       std::cout << colorize(YELLOW) << "[MATH] WARNING! Calculating an empty expression! Result will be 0" << colorize(NC) << "\n";
       return 0;
     }
-    std::string expr = replace(expression, " ", ""); //remove spaces
 
+    std::string expr = expression;
     while (expr.find_first_of("()") != std::string::npos)
     {
       auto pos1 = expr.find_last_of("(");
@@ -97,78 +228,49 @@ namespace rweb
       expr.replace(pos1, pos2-pos1+1, std::to_string(res));
     }
 
-    //without brackets
-    while (expr.find("**") != std::string::npos)
-    {
-      auto before1 = expr.substr(0, expr.find("**")).find_last_not_of("*"); 
-      auto before2 = expr.find_first_of("*/+-", before1+3); //+3 because ** is 2 length and the next char
+    std::vector<std::pair<short, std::string>> tokens;
+    std::string tmp = "";
 
-      std::string tmp = expr.substr(before1, before2-before1);
-      auto vec = split(tmp, "*");
-      expr = replace(expr, tmp, std::to_string((pow(atof(vec[0].c_str()), atof(vec[1].c_str())))));
-    } 
-
-    std::size_t pos1=0, pos2=0, pos3=0;
-    while (expr.find_first_of("* /") != std::string::npos)
+    for (int i=0;i<=expr.size();++i)
     {
-      while (pos2 != std::string::npos)
+      char c = expr[i];
+      if (c == ' ' || c == '\n')
+        continue;
+
+      if (!isdigit(c) && !isOperator(c) && (int)c != 0 && c != '\0' && c != '.')
       {
-        pos2 = expr.find_first_of("*+-/", pos1+1);
-        if (pos2 == std::string::npos)
-        {
-          break;
-        }
-        if (expr[pos2] == '*' || expr[pos2] == '/')
-        {
-          pos3 = expr.find_first_of("*+-/", pos2+1);  
-          if (expr[pos2] == '*')
-          {
-            double res = atof(expr.substr(pos1, pos2-pos1).c_str()) * atof(expr.substr(pos2+1, pos3-pos2-1).c_str());
-            expr = replace(expr, expr.substr(pos1, pos2-pos1) + expr[pos2] + expr.substr(pos2+1, pos3-pos2-1), std::to_string(res));
-            continue;
-          } else {
-            double res = atof(expr.substr(pos1, pos2-pos1).c_str()) / atof(expr.substr(pos2+1, pos3-pos2-1).c_str());
-            expr = replace(expr, expr.substr(pos1, pos2-pos1) + expr[pos2] + expr.substr(pos2+1, pos3-pos2-1), std::to_string(res));
-            continue;
-          }
-        } else {
-          pos1 = pos2+1;
-          pos2 = expr.find_first_of("*+-/", pos1+1);
-          continue;
-        }
+        if (is_ok)
+          *is_ok = false;
+        else
+          std::cerr << colorize(RED) << "[MATH] Error! Unallowed character found in the math expression: " << expression << colorize(NC) << "\n";
+        return 0;
       }
+
+      if (tmp.empty() && tokens.size() == 0 && c == '-')
+      {
+        tmp = "";
+        tokens.emplace_back(2, "0");
+        tokens.emplace_back(1, "-");
+      } else if (*tmp.rbegin() == '(')
+      {
+        tokens.emplace_back(3, "(");
+        tmp = "";
+      } else if (*tmp.rbegin() == ')')
+      {
+        tokens.emplace_back(4, ")");
+        tmp = "";
+      } else if ((isdigit(*tmp.rbegin()) || *tmp.rbegin() == '.') && !(isdigit(c) || c == '.'))
+      {
+        tokens.emplace_back(2, tmp);
+        tmp = c;
+      } else if (isOperator(*tmp.rbegin()) && !isOperator(c))
+      {
+        tokens.emplace_back(1, tmp);
+        tmp = c;
+      } else
+        tmp += c;
     }
 
-    pos1=0; pos2=0; pos3=0;
-    while (expr.find_first_of("+-") != std::string::npos)
-    {
-      while (pos2 != std::string::npos)
-      {
-        pos2 = expr.find_first_of("+-", pos1+1);
-        if (pos2 == std::string::npos)
-        {
-          break;
-        }
-        if (expr[pos2] == '+' || expr[pos2] == '-')
-        {
-          pos3 = expr.find_first_of("+-", pos2+1);  
-          if (expr[pos2] == '+')
-          {
-            double res = atof(expr.substr(pos1, pos2-pos1).c_str()) + atof(expr.substr(pos2+1, pos3-pos2-1).c_str());
-            expr = replace(expr, expr.substr(pos1, pos2-pos1) + expr[pos2] + expr.substr(pos2+1, pos3-pos2-1), std::to_string(res));
-            continue;
-          } else {
-            double res = atof(expr.substr(pos1, pos2-pos1).c_str()) - atof(expr.substr(pos2+1, pos3-pos2-1).c_str());
-            expr = replace(expr, expr.substr(pos1, pos2-pos1) + expr[pos2] + expr.substr(pos2+1, pos3-pos2-1), std::to_string(res));
-            continue;
-          }
-        } else {
-          pos1 = pos2+1;
-          pos2 = expr.find_first_of("*+-/", pos1+1);
-          continue;
-        }
-      }
-    }
-    return atof(expr.c_str());
+    return calculate(tokens, is_ok);
   }
 }

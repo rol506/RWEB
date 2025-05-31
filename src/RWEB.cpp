@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <errno.h>
@@ -19,6 +20,7 @@
 namespace rweb
 {
   static std::string resourcePath = "";
+  static std::string execPath = "";
   static std::unordered_map<std::string, HTTPCallback> serverPaths;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static int serverPort = 4221;
@@ -48,20 +50,31 @@ namespace rweb
 
   static std::string getExecutablePath()
   {
+    if (!initialized)
+    {
 #ifdef __linux__
-    char* path = (char*)malloc(1024);
-    size_t r;
-    r = readlink("/proc/self/exe", path, 1023);
-    std::string execPath = path;
-    free(path);
-    return execPath;
+      char path[2048];
+      size_t r;
+      r = readlink("/proc/self/exe", path, sizeof(path)-1);
+      if (r < 0)
+      {
+        std::cerr << "[RWEB] Failed to get executable path!\n";
+        std::cerr << describeError() << "\n";
+        throw std::runtime_error("Failed to get executable path");
+      }
+      execPath = path;
+      execPath += "\0";
+      std::cout << "PATH: " << execPath << "\n";
+      return execPath;
 #elif _WIN32
-    char* path = (char*)malloc(1024);
-    GetModuleFileName(NULL, path, 1024);
-    std::string execPath = path;
-    free(path);
-    return execPath;
+      char path[2048];
+      GetModuleFileName(NULL, path, sizeof(path)-1);
+      execPath = path;
+      execPath += "\0";
+      return execPath;
 #endif
+    }
+    return execPath;
   }
 
   //see sourcePathLevel docs
@@ -285,7 +298,7 @@ namespace rweb
 
   static void handleClient(const Request r, const SOCKFD newsockfd)
   {
-    const std::chrono::time_point startTime = std::chrono::high_resolution_clock::now(); //for profiling
+    const auto startTime = std::chrono::high_resolution_clock::now(); //for profiling
     std::cout << colorize(NC);
     std::string res;
     int n = 0;

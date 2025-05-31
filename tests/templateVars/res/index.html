@@ -8,16 +8,14 @@
   </head>
   <body>
 
-    <h1>some_value > 3-1</h1>
-    <h1>some_value == 2</h1>
-    <h1>true</h1>
-    <h1>true</h1>
-    
-    {% if some_value == 2 %}
-    <h1>true</h1>
-    {% else %}
-    <h1>false</h1>
-    {% endif %}
-    
+    <h1>Some value ** 2 = {{some_value ** 2}}</h1> 
+    <h1>ladno * 2 = {{ladno * 2}}</h1>
+    <h1>string = "{{st}}"</h1>
+    {% raw %}
+    {% raw %}
+    <h1>{{VAR}}</h1>
+    {% endraw %}
+    {% endraw %}
+
   </body>
 </html>

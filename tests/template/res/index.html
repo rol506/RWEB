@@ -8,34 +8,12 @@
   </head>
   <body>
 
-    <nav>
-      {% for m in menu %}
-      <div><a href="{{m.url}}" class="anim">{{m.title}}-{{currentURL}}</a></div>
-      {% endfor %}
-    </nav>
-    <h1>Some value ** 2 = {{some_value ** 2}}</h1> 
-    <h1>ladno * 2 = {{ladno * 2}}</h1>
-    <h1>string = "{{st}}"</h1>
-    {% for m in range(0) %}
-    <h1>ladno - {{m}}</h1>
+    <ul>
+    {% for m in menu.inner %}
+    <li>{{m.url}} - {{m.title}}</li>
     {% endfor %}
-    {% for m in range(some_value + 1) %}
-    <h1>{{m + 1}}</h1>
-    {% endfor %}
-    {% for m in range(some_value) %}
-    <h1>{{ m }}</h1>
-    {% endfor %}
-    {% for m in menu %}
-    <h1>{{m.url}} + 2 = {{m.la + 2}}</h1>
-    {% endfor %}
-    {% if some_value+1 > 3-1 %}
-    <h1>some_value > 3-1</h1>
-    {% else %}
-    <h1>some_value < 3-1</h1>
-    {% endif %}
-    {% if some_value == 2 %}
-    <h1>some_value == 2</h1>
-    {% else %}
-    {% endif %}
-  </body>
+    </ul>
+
+    <h1>{{temp.url}} - {{temp.title.title2}}</h1>
+ </body>
 </html>

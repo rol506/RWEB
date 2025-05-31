@@ -1,17 +1,27 @@
 {
   "menu":
-  [
-    {
-      "url": "/home",
-      "title": "Главная",
-      "la": 2
-    },
-    {
-      "url": "/about",
-      "title": "О нас",
-      "la": 3
+  {
+    "inner":
+    [
+      {
+        "url": "/home",
+        "title": "Главная",
+        "la": 2
+      },
+      {
+        "url": "/about",
+        "title": "О нас",
+        "la": 3
+      }
+    ]
+  },
+  "temp": {
+    "url": "/url",
+    "title": {
+      "title1": "title",
+      "title2": "TITLE"
     }
-  ],
+  },
   "some_value": 2,
   "ladno": 1,
   "st": "ok"

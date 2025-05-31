@@ -23,24 +23,20 @@ add_library(RWEB
 )
 target_include_directories(RWEB PUBLIC include)
 
+# everything below can be deleted (it's for testing)
 add_executable(app
   app.cpp
 )
 
 target_link_libraries(app RWEB)
 
+#copy original /res directory to build path (build/res | build/Debug/res)
 add_custom_command(TARGET app POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:${PROJECT_NAME}>/res)
 
 enable_testing()
 
-#TESTS
-#add_executable(TEST_CALC
-#  test_calc.cpp
-#)
-#target_link_libraries(TEST_CALC RWEB)
-#add_test(NAME CalcTest COMMAND TEST_CALC)
-
-add_subdirectory(tests/template)
 add_subdirectory(tests/calc)
+add_subdirectory(tests/templateVars)
 add_subdirectory(tests/template_if)
+add_subdirectory(tests/template)
 add_subdirectory(tests/templateBlock)
