@@ -791,20 +791,23 @@ namespace rweb
           } else {
             token--;
             try {
-              expression += stringifyJson(json.find(token->second));
+              expression += stringifyJson(json.at(token->second));
             } catch (const nlohmann::detail::out_of_range& e)
             {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+              return std::nullopt;
             }
           }
         } else if (token->first == VARIABLE)
         {
-          if (!json.contains(token->second))
+          auto ptr = json.find(token->second);
+          if (ptr != json.end())
           {
+            expression += stringifyJson(*ptr);
+          } else {
             std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
             return std::nullopt;
           }
-
-          expression += stringifyJson(json.at(token->second));
         }
         else if (token->first == MATH)
         {
