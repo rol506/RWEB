@@ -12,6 +12,11 @@
       "la": 3
     }
   ],
+  "outer": {
+    "inner": {
+      "value": "ok"
+    }
+  },
   "some_value": 2,
   "ladno": 1,
   "st": "ok",
