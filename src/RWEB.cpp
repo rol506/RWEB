@@ -185,6 +185,9 @@ namespace rweb
 
   void setErrorHandler(const int code, const HTTPCallback callback)
   {
+    if (code / 100 == 1 || code / 100 == 2 || code / 100 == 3)
+      return;
+
     auto it = errorHandlers.find(code);
     if (it != errorHandlers.end())
     {
@@ -341,7 +344,7 @@ namespace rweb
         res += temp.getHTML();
 
         std::cout << "[RESPONCE] ";
-        if (code[0] == '2' || code[0] == '3')
+        if (code[0] == '1' || code[0] == '2' || code[0] == '3')
         {
           std::cout << colorize(NC);
         } else {
@@ -393,7 +396,7 @@ namespace rweb
           res += temp.getHTML();
 
           std::cout << "[RESPONCE] ";
-          if (code[0] == '2' || code[0] == '3')
+          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
           } else {
@@ -428,7 +431,7 @@ namespace rweb
       res += temp.getHTML(); //body
 
       //handle error codes
-      if (code[0] != '2' && code[0] != '3')
+      if (code[0] != '1' && code[0] != '2' && code[0] != '3')
       {
         //handle error
         std::string initialStatus = temp.getStatusResponce();
@@ -453,7 +456,7 @@ namespace rweb
           res += temp.getHTML();
 
           std::cout << "[RESPONCE] ";
-          if (code[0] == '2' || code[0] == '3')
+          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
           } else {
@@ -464,7 +467,7 @@ namespace rweb
             initialStatus.substr(9, initialStatus.size()-11);
         } else {
           std::cout << "[RESPONCE] ";
-          if (code[0] == '2' || code[0] == '3')
+          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
           } else {
