@@ -55,6 +55,7 @@ namespace rweb {
   HTMLTemplate redirect(const std::string& location, const std::string& statusResponce=HTTP_303);
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
   std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType);
+  void setErrorHandler(const int code, const HTTPCallback callback);
 
   //returns false on error.
   bool init(bool debug = false, unsigned int level=0);

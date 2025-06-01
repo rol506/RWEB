@@ -29,6 +29,7 @@ int main()
   rweb::addRoute("/", [](const rweb::Request r){return rweb::redirect("/index");});
   rweb::addRoute("/index", &homePage);
   rweb::addRoute("/home", &homePage);
+  rweb::setErrorHandler(404, [](const rweb::Request r){return rweb::redirect("/index");});
 
   rweb::addResource("/style.css", "style.css", "text/css");
 

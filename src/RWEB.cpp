@@ -12,6 +12,7 @@
 
 #include "../include/Socket.h"
 #include "HTMLTemplate.h"
+#include "Utility.h"
 
 #ifdef __linux__
 #include <signal.h>
@@ -23,6 +24,7 @@ namespace rweb
   static std::string execPath = "";
   static std::unordered_map<std::string, HTTPCallback> serverPaths;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
+  static std::unordered_map<int, HTTPCallback> errorHandlers;
   static int serverPort = 4221;
   static bool serverDebugMode = false;
   static bool serverProfiling = false;
@@ -181,6 +183,18 @@ namespace rweb
     serverResources.insert({URLpath, {resourcePath, contentType}});
   }
 
+  void setErrorHandler(const int code, const HTTPCallback callback)
+  {
+    auto it = errorHandlers.find(code);
+    if (it != errorHandlers.end())
+    {
+      errorHandlers.erase(404);
+      errorHandlers.emplace(404, callback);
+    } else {
+      errorHandlers.emplace(404, callback);
+    }
+  }
+
   HTMLTemplate redirect(const std::string& location, const std::string& statusResponce)
   {
     HTMLTemplate temp = createTemplate("", statusResponce);
@@ -305,9 +319,44 @@ namespace rweb
 
     if (!r.isValid)
     {
-      res = HTTP_400 + "\r\n";
-      std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9);
-      serverSocket->sendMessage(newsockfd, res);
+      //handle 400
+      auto it = errorHandlers.find(400);
+      if (it != errorHandlers.end())
+      {
+        HTMLTemplate temp = it->second(r);
+        std::string code = temp.getStatusResponce().substr(9, 3);
+        if (!temp.getFileName().empty())
+        {
+          res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
+        } else {
+          res = temp.getStatusResponce();
+        }
+
+        if (code[0] == '3')
+        {
+          res += "Location: " + temp.getRedirectLocation() + "\r\n";
+        }
+
+        res += "\r\n";
+        res += temp.getHTML();
+
+        std::cout << "[RESPONCE] ";
+        if (code[0] == '2' || code[0] == '3')
+        {
+          std::cout << colorize(NC);
+        } else {
+          std::cout << colorize(RED);
+          res = temp.getStatusResponce();
+        }
+        std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
+          HTTP_400.substr(9, HTTP_400.size()-11);
+        serverSocket->sendMessage(newsockfd, res);
+      } else {
+        res = HTTP_400 + "\r\n";
+        std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9);
+        serverSocket->sendMessage(newsockfd, res);
+      }
+
       Socket::closeSocket(newsockfd);
       return;
     }
@@ -322,8 +371,41 @@ namespace rweb
         res = sendFile(HTTP_200, it2->second.first, it2->second.second);
         std::cout << "[RESPONCE] " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
       } else { 
-        res = HTTP_404 + "\r\n";
-        std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
+        //handle 404
+        auto it = errorHandlers.find(404);
+        if (it != errorHandlers.end())
+        {
+          HTMLTemplate temp = it->second(r);
+          std::string code = temp.getStatusResponce().substr(9, 3);
+          if (!temp.getFileName().empty())
+          {
+            res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
+          } else {
+            res = temp.getStatusResponce();
+          }
+
+          if (code[0] == '3')
+          {
+            res += "Location: " + temp.getRedirectLocation() + "\r\n";
+          }
+
+          res += "\r\n";
+          res += temp.getHTML();
+
+          std::cout << "[RESPONCE] ";
+          if (code[0] == '2' || code[0] == '3')
+          {
+            std::cout << colorize(NC);
+          } else {
+            std::cout << colorize(RED);
+            res = temp.getStatusResponce();
+          }
+          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
+            HTTP_404.substr(9, HTTP_404.size()-11);
+        } else { 
+          res = HTTP_404 + "\r\n";
+          std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
+        }
       }
     } else {
       HTMLTemplate temp = it->second(r);
@@ -345,15 +427,55 @@ namespace rweb
       res += "\r\n";
       res += temp.getHTML(); //body
 
-      std::cout << "[RESPONCE] ";
-      if (code[0] == '2' || code[0] == '3')
+      //handle error codes
+      if (code[0] != '2' && code[0] != '3')
       {
-        std::cout << colorize(NC);
+        //handle error
+        std::string initialStatus = temp.getStatusResponce();
+        auto it = errorHandlers.find(std::stoi(code));
+        if (it != errorHandlers.end())
+        {
+          HTMLTemplate temp = it->second(r);
+          std::string code = temp.getStatusResponce().substr(9, 3);
+          if (!temp.getFileName().empty())
+          {
+            res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
+          } else {
+            res = temp.getStatusResponce();
+          }
+
+          if (code[0] == '3')
+          {
+            res += "Location: " + temp.getRedirectLocation() + "\r\n";
+          }
+
+          res += "\r\n";
+          res += temp.getHTML();
+
+          std::cout << "[RESPONCE] ";
+          if (code[0] == '2' || code[0] == '3')
+          {
+            std::cout << colorize(NC);
+          } else {
+            std::cout << colorize(RED);
+            res = temp.getStatusResponce();
+          }
+          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
+            initialStatus.substr(9, initialStatus.size()-11);
+        } else {
+          std::cout << "[RESPONCE] ";
+          if (code[0] == '2' || code[0] == '3')
+          {
+            std::cout << colorize(NC);
+          } else {
+            std::cout << colorize(RED);
+            res = temp.getStatusResponce();
+          }
+          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+        }
       } else {
-        std::cout << colorize(RED);
-        res = temp.getStatusResponce();
+        std::cout << "[RESPONCE] " << colorize(NC) << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
       }
-      std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
     }
 
     if (getDebugState() && getProfilingMode())
