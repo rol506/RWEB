@@ -26,6 +26,8 @@ namespace rweb {
     std::string path;
     std::string protocol;
     std::string headers;
+    std::string contentType;
+    std::map<std::string, std::string> body;
     bool isValid = false;
   }; 
 
@@ -54,6 +56,7 @@ namespace rweb {
   void addResource(const std::string& URLpath, const std::string& resourcePath, const std::string& contentType);
   HTMLTemplate redirect(const std::string& location, const std::string& statusResponce=HTTP_303);
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
+  HTMLTemplate abort(const std::string& statusResponce);
   std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType);
   void setErrorHandler(const int code, const HTTPCallback callback);
 

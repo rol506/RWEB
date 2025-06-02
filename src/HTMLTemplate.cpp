@@ -1591,4 +1591,20 @@ namespace rweb
   {
     return m_location;
   }
+
+  HTMLTemplate::HTMLTemplate(const char* html)
+  {
+    m_html = html;
+    m_contentType = "text/html";
+    m_encoding = "utf-8";
+    m_responce = HTTP_200;
+  }
+
+  HTMLTemplate::HTMLTemplate(const std::string& html)
+  {
+    m_html = html;
+    m_contentType = "text/html";
+    m_encoding = "utf-8";
+    m_responce = HTTP_200;
+  }
 }

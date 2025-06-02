@@ -10,6 +10,7 @@ namespace rweb
   class HTMLTemplate
   {
   public:
+    HTMLTemplate(const char* html);
     HTMLTemplate(const std::string& html);
     const std::string& getHTML() const;
     const std::string& getFileName() const;
@@ -30,5 +31,6 @@ namespace rweb
 
     friend HTMLTemplate createTemplate(const std::string&, const std::string&);
     friend HTMLTemplate redirect(const std::string&, const std::string&);
+    friend HTMLTemplate abort(const std::string& statusResponce);
   };
 }

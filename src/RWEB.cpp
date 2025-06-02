@@ -9,6 +9,7 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
+#include <cstdio>
 
 #include "../include/Socket.h"
 #include "HTMLTemplate.h"
@@ -133,6 +134,27 @@ namespace rweb
     return std::to_string(errno);
   }
 
+  static std::string urlDecode(const std::string& str) {
+    std::string ret;
+    char ch;
+    size_t i, ii, len = str.length();
+
+    for (i = 0; i < len; i++) {
+      if (str[i] != '%') {
+        if (str[i] == '+')
+          ret += ' ';
+        else
+          ret += str[i];
+      } else {
+        sscanf(str.substr(i + 1, 2).c_str(), "%x", (unsigned int* )&ii);
+        ch = static_cast<char>(ii);
+        ret += ch;
+        i = i + 2;
+      }
+    }
+    return ret;
+} 
+
   static Request parseRequest(const std::string request)
   {
     Request r;
@@ -159,7 +181,50 @@ namespace rweb
     r.protocol = str.substr(0, pos);
     str = str.substr(pos+1);
 
-    r.isValid = true;
+    if (r.method == "GET")
+    {
+      r.isValid = true;
+    } else if (r.method == "POST")
+    {
+      std::size_t pos1 = str.find("Content-Type:")+13;
+      if (pos1 == std::string::npos)
+      {
+        r.isValid = false;
+        return r;
+      } else {
+        std::size_t pos2 = str.find_first_of("\r\n", pos1);
+        if (pos2 == std::string::npos)
+        {
+          r.isValid = false;
+          return r;
+        }
+
+        r.contentType = trim(str.substr(pos1, pos2-pos1));
+
+        pos1 = str.find_last_of("\n")+1;
+        std::string body = str.substr(pos1);
+
+        auto v = split(body, "&");
+        for (auto it: v)
+        {
+          std::size_t pos = it.find_first_of("=");
+          r.body.emplace(trim(urlDecode(it.substr(0, pos))), trim(urlDecode(it.substr(pos+1))));
+        }
+
+        if (r.contentType == "application/x-www-form-urlencoded")
+        {
+          r.isValid = true;
+        } else {
+          r.isValid = false;
+          return r;
+        }
+      }
+
+    } else {
+      r.isValid = false;
+      return r;
+    }
+
     return r;
   }
 
@@ -191,10 +256,10 @@ namespace rweb
     auto it = errorHandlers.find(code);
     if (it != errorHandlers.end())
     {
-      errorHandlers.erase(404);
-      errorHandlers.emplace(404, callback);
+      errorHandlers.erase(code);
+      errorHandlers.emplace(code, callback);
     } else {
-      errorHandlers.emplace(404, callback);
+      errorHandlers.emplace(code, callback);
     }
   }
 
@@ -328,7 +393,7 @@ namespace rweb
       {
         HTMLTemplate temp = it->second(r);
         std::string code = temp.getStatusResponce().substr(9, 3);
-        if (!temp.getFileName().empty())
+        if (!temp.getHTML().empty()) //non-empty body
         {
           res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
         } else {
@@ -343,7 +408,7 @@ namespace rweb
         res += "\r\n";
         res += temp.getHTML();
 
-        std::cout << "[RESPONCE] ";
+        std::cout << "[RESPONCE] " << r.method << " -- ";
         if (code[0] == '1' || code[0] == '2' || code[0] == '3')
         {
           std::cout << colorize(NC);
@@ -353,11 +418,33 @@ namespace rweb
         }
         std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
           HTTP_400.substr(9, HTTP_400.size()-11);
+
+        if (getDebugState() && getProfilingMode())
+        {
+          const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
+          std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
+        } else {
+          std::cout << "\n";
+        }
+
         serverSocket->sendMessage(newsockfd, res);
+        Socket::closeSocket(newsockfd);
+        return;
       } else {
         res = HTTP_400 + "\r\n";
-        std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9);
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9);
+
+        if (getDebugState() && getProfilingMode())
+        {
+          const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
+          std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
+        } else {
+          std::cout << "\n";
+        }
+
         serverSocket->sendMessage(newsockfd, res);
+        Socket::closeSocket(newsockfd);
+        return;
       }
 
       Socket::closeSocket(newsockfd);
@@ -372,7 +459,7 @@ namespace rweb
       if (it2 != serverResources.end())
       {
         res = sendFile(HTTP_200, it2->second.first, it2->second.second);
-        std::cout << "[RESPONCE] " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
       } else { 
         //handle 404
         auto it = errorHandlers.find(404);
@@ -380,7 +467,7 @@ namespace rweb
         {
           HTMLTemplate temp = it->second(r);
           std::string code = temp.getStatusResponce().substr(9, 3);
-          if (!temp.getFileName().empty())
+          if (!temp.getHTML().empty()) //non-empty body
           {
             res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
           } else {
@@ -395,7 +482,7 @@ namespace rweb
           res += "\r\n";
           res += temp.getHTML();
 
-          std::cout << "[RESPONCE] ";
+          std::cout << "[RESPONCE] " << r.method << " -- ";
           if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
@@ -407,13 +494,13 @@ namespace rweb
             HTTP_404.substr(9, HTTP_404.size()-11);
         } else { 
           res = HTTP_404 + "\r\n";
-          std::cout << "[RESPONCE] " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
+          std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
         }
       }
     } else {
       HTMLTemplate temp = it->second(r);
       std::string code = temp.getStatusResponce().substr(9, 3);
-      if (!temp.getFileName().empty()) //non-empty body
+      if (!temp.getHTML().empty()) //non-empty body
       {
         res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
       } else {
@@ -440,7 +527,7 @@ namespace rweb
         {
           HTMLTemplate temp = it->second(r);
           std::string code = temp.getStatusResponce().substr(9, 3);
-          if (!temp.getFileName().empty())
+          if (!temp.getHTML().empty())
           {
             res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
           } else {
@@ -455,7 +542,7 @@ namespace rweb
           res += "\r\n";
           res += temp.getHTML();
 
-          std::cout << "[RESPONCE] ";
+          std::cout << "[RESPONCE] " << r.method << " -- ";
           if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
@@ -466,7 +553,7 @@ namespace rweb
           std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
             initialStatus.substr(9, initialStatus.size()-11);
         } else {
-          std::cout << "[RESPONCE] ";
+          std::cout << "[RESPONCE] " << r.method << " -- ";
           if (code[0] == '1' || code[0] == '2' || code[0] == '3')
           {
             std::cout << colorize(NC);
@@ -477,7 +564,8 @@ namespace rweb
           std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
         }
       } else {
-        std::cout << "[RESPONCE] " << colorize(NC) << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
+          temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
       }
     }
 
@@ -572,8 +660,11 @@ namespace rweb
     return temp;
   }
 
-  HTMLTemplate::HTMLTemplate(const std::string& html)
-    : m_html(html)
+  HTMLTemplate abort(const std::string& statusResponce)
   {
+    HTMLTemplate temp = "";
+    temp.m_responce = statusResponce;
+    return temp;
   }
+
 }
