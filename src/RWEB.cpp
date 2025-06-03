@@ -161,8 +161,6 @@ namespace rweb
     std::string str = request;
     std::size_t pos;
 
-    std::cout << "REQUEST:\n" << str << "\n";
-
     //method
     pos = str.find(" ");
     r.method = str.substr(0, pos);
@@ -238,7 +236,6 @@ namespace rweb
           return r;
         }
 
-        std::cout << "\"" << trim(str.substr(lastfnd, end-lastfnd)) << "\"\n";
         auto v = split(trim(str.substr(lastfnd, end-lastfnd)), ";");
         for (auto c: v)
         {
