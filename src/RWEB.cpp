@@ -161,6 +161,8 @@ namespace rweb
     std::string str = request;
     std::size_t pos;
 
+    std::cout << "REQUEST:\n" << str << "\n";
+
     //method
     pos = str.find(" ");
     r.method = str.substr(0, pos);
@@ -223,6 +225,28 @@ namespace rweb
     } else {
       r.isValid = false;
       return r;
+    }
+
+    {
+      size_t lastfnd = str.find("Cookie: ")+8;
+      while (lastfnd != std::string::npos+8)
+      {
+        size_t end = str.find_first_of("\n", lastfnd);
+        if (end == std::string::npos)
+        {
+          r.isValid = false;
+          return r;
+        }
+
+        std::cout << "\"" << trim(str.substr(lastfnd, end-lastfnd)) << "\"\n";
+        auto v = split(trim(str.substr(lastfnd, end-lastfnd)), ";");
+        for (auto c: v)
+        {
+          size_t start = c.find_first_of("=");
+          r.cookies.emplace(c.substr(0, start), c.substr(start+1));
+        }
+        lastfnd = str.find("Cookie: ", lastfnd)+8;
+      }
     }
 
     return r;
@@ -400,6 +424,8 @@ namespace rweb
           res = temp.getStatusResponce();
         }
 
+        res += temp.getAllCookieHeaders(); // \r\n included
+
         if (code[0] == '3')
         {
           res += "Location: " + temp.getRedirectLocation() + "\r\n";
@@ -474,6 +500,8 @@ namespace rweb
             res = temp.getStatusResponce();
           }
 
+          res += temp.getAllCookieHeaders(); // \r\n included
+
           if (code[0] == '3')
           {
             res += "Location: " + temp.getRedirectLocation() + "\r\n";
@@ -508,6 +536,8 @@ namespace rweb
       }
 
       //---ADDITIONAL HEADERS---
+      res += temp.getAllCookieHeaders(); // \r\n included
+      
       if (code[0] == '3') //redirect
       {
         res += "Location: " + temp.getRedirectLocation() + "\r\n";
@@ -533,6 +563,8 @@ namespace rweb
           } else {
             res = temp.getStatusResponce();
           }
+
+          res += temp.getAllCookieHeaders(); // \r\n included
 
           if (code[0] == '3')
           {

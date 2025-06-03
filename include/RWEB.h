@@ -28,6 +28,7 @@ namespace rweb {
     std::string headers;
     std::string contentType;
     std::map<std::string, std::string> body;
+    std::map<std::string, std::string> cookies;
     bool isValid = false;
   }; 
 

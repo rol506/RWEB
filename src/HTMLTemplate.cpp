@@ -8,6 +8,7 @@
 #include <sstream>
 #include <optional>
 #include <variant>
+#include <ctime>
 
 namespace rweb
 { 
@@ -821,7 +822,7 @@ namespace rweb
 
       bool is_ok = true;
       double r = calculate(expression, &is_ok);
-      if (!is_ok)
+      if (!is_ok || expression.empty())
       {
         return expression;
       }
@@ -1606,5 +1607,77 @@ namespace rweb
     m_contentType = "text/html";
     m_encoding = "utf-8";
     m_responce = HTTP_200;
+  }
+
+  const std::optional<std::string> HTMLTemplate::getCookieValue(const std::string& name) const
+  {
+    auto it = m_cookies.find(name);
+    if (it == m_cookies.end())
+    {
+      return std::nullopt;
+    }
+
+    return it->second.value;
+  }
+
+  const void HTMLTemplate::setCookie(const std::string& name, const std::string& value, const unsigned int maxAgeSeconds, const bool httpOnly)
+  {
+    Cookie cookie = {value, maxAgeSeconds, httpOnly};
+    m_cookies.emplace(name, cookie);
+  }
+
+  //returns headers for setting cookies
+  const std::string HTMLTemplate::getAllCookieHeaders() const
+  {
+    std::string result = "";
+    for (auto it: m_cookies)
+    {
+      std::string temp = "Set-Cookie: " + it.first + "=" + it.second.value + ";";
+
+      if (it.second.maxAgeSeconds > 0)
+      {
+        struct tm dm, cdm;
+        std::time_t timestamp = time(0);
+        cdm = *gmtime(&timestamp);
+
+        int deltaSec = 0, deltaHrs = 0, deltaMin = 0, deltaDay = 0, deltaMonth = 0, deltaYear = 0;
+        unsigned int maxAge = it.second.maxAgeSeconds;
+        deltaYear = maxAge / 31536000; maxAge -= deltaYear * 31536000;
+        deltaMonth = maxAge / 2678400; maxAge -= deltaMonth * 2678400;
+        deltaDay = maxAge / 86400;     maxAge -= deltaDay * 86400;
+        deltaHrs = maxAge / 3600;      maxAge -= deltaHrs * 3600;
+        deltaMin = maxAge / 60;        maxAge -= deltaMin * 60;
+        deltaSec = maxAge;             maxAge = 0;
+
+        dm.tm_year = cdm.tm_year + deltaYear;
+        dm.tm_mon = cdm.tm_mon + deltaMonth;
+        dm.tm_mday = cdm.tm_mday + deltaDay;
+        dm.tm_hour = cdm.tm_hour + deltaHrs;
+        dm.tm_min = cdm.tm_min + deltaMin;
+        dm.tm_sec = cdm.tm_sec + deltaSec;
+
+        timestamp = mktime(&dm);
+
+        std::string weekDays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+        std::string monthNames[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        std::string time = weekDays[dm.tm_wday] + ", " + (dm.tm_mday >= 10 ? std::to_string(dm.tm_mday) : "0" + std::to_string(dm.tm_mday)) + " "
+          + monthNames[dm.tm_mday] + " " + std::to_string(dm.tm_year + 1900) + " "
+          + (dm.tm_hour >= 10 ? std::to_string(dm.tm_hour) : "0" + std::to_string(dm.tm_hour)) + ":"
+          + (dm.tm_min >= 10 ? std::to_string(dm.tm_min) : "0" + std::to_string(dm.tm_min)) + ":"
+          + (dm.tm_sec >= 10 ? std::to_string(dm.tm_sec) : "0" + std::to_string(dm.tm_sec)) + " GMT";
+
+        temp += " Expires=" + time + ";";
+        temp += " Max-Age=" + std::to_string(it.second.maxAgeSeconds) + ";";
+      }
+
+      if (it.second.httpOnly)
+        temp += " HttpOnly;";
+
+      temp += "\r\n";
+
+      result += temp;
+    }
+
+    return result;
   }
 }
