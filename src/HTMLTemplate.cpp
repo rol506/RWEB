@@ -166,10 +166,10 @@ namespace rweb
     std::string result = "";
     std::string expression = "";
 
-    for (auto it : input)
+    /*for (auto it : input)
     {
       std::cout << "{ " << typeToString(it.first) << " - " << it.second << " }\n";
-    }std::cout << "----TOKENS_END----\n";
+    }std::cout << "----TOKENS_END----\n";*/
 
     if (input.begin()->first == IF)
     {
