@@ -32,7 +32,8 @@ namespace rweb
     ITERATOR,
     ARGUMENT,
     OPEN_BRACKET,
-    CLOSE_BRACKET
+    CLOSE_BRACKET,
+    FLAG
   } TOKEN_TYPE;
 
   static inline const std::string typeToString(const TOKEN_TYPE in)
@@ -77,6 +78,8 @@ namespace rweb
         return "ITERATOR";
       case ARGUMENT:
         return "ARGUMENT";
+      case FLAG:
+        return "FLAG";
     }
 
     return "Unknown"; 
@@ -163,10 +166,10 @@ namespace rweb
     std::string result = "";
     std::string expression = "";
 
-    /*for (auto it : input)
+    for (auto it : input)
     {
       std::cout << "{ " << typeToString(it.first) << " - " << it.second << " }\n";
-    }std::cout << "----TOKENS_END----\n";*/
+    }std::cout << "----TOKENS_END----\n";
 
     if (input.begin()->first == IF)
     {
@@ -744,12 +747,27 @@ namespace rweb
       std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ENDFOR before FOR!" << colorize(NC) << "\n";
       return std::nullopt;
     } else {
+      //flags
+      bool strFlag = false;
+      bool safeFlag = false;
+
       // VARIABLE 
       for (auto token = input.begin(); token != input.end(); ++token)
       {
         if (token->first == SUBSCRIPT){
           std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized subscript token in variable!" << colorize(NC) << "\n";
           return std::nullopt;
+        } else if (token->first == FLAG)
+        {
+          if (token->second == "str")
+          {
+            strFlag = true;
+          } else if (token->second == "safe")
+          {
+            safeFlag = true;
+          } else {
+            std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
+          }
         } else if (token->first == VARIABLE)
         {
           if ((++token) != input.end() && token->first == MATH && token->second == ".")
@@ -822,14 +840,27 @@ namespace rweb
 
       bool is_ok = true;
       double r = calculate(expression, &is_ok);
-      if (!is_ok || expression.empty())
+      if (!is_ok || expression.empty() || strFlag)
       {
+        if (safeFlag)
+        {
+          //safe from html tags
+          expression = replace(expression, "<", "&lt;"); //possible place for optimization
+          expression = replace(expression, ">", "&gt;");
+        }
+
         return expression;
       }
 
       std::stringstream ss;
       ss << r;
       result = ss.str();
+      if (safeFlag)
+      {
+        //possible place for optimization
+        result = replace(result, "<", "&lt;");
+        result = replace(result, ">", "&gt;");
+      }
     }
 
     return result;
@@ -1472,6 +1503,9 @@ namespace rweb
             {
               //.0 -> 0.0
               tokens.emplace_back(MATH, "0" + trim(tmp));
+            } else if (first == '|')
+            {
+              tokens.emplace_back(FLAG, tmp.substr(1));
             } else if (isalpha(first) || first == '_')
             {
               tokens.emplace_back(VARIABLE, trim(tmp));
@@ -1526,6 +1560,10 @@ namespace rweb
           if (tmp == "")
           {
             tmp += code[i];
+          } else if (code[i] == '|' && first == '|') //flag
+          {
+            tokens.emplace_back(FLAG, tmp.substr(1));
+            tmp = code[i];
           } else if (isOperator(last) && !isOperator(last))
           {
             tokens.emplace_back(OPERATOR, trim(tmp));

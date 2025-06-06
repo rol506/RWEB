@@ -14,5 +14,7 @@
   ],
   "some_value": 2,
   "ladno": 1,
-  "st": "ok"
+  "st": "ok",
+  "date": "2025-06-06",
+  "unsafe": "<script></script>"
 }
