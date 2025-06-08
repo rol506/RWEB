@@ -199,9 +199,10 @@ namespace rweb
 
   double calculate(const std::string& expression, bool* is_ok)
   {
-    if (trim(expression) == "")
+    if (trim(expression).empty())
     {
-      std::cout << colorize(YELLOW) << "[MATH] WARNING! Calculating an empty expression! Result will be 0" << colorize(NC) << "\n";
+      if (!is_ok)
+        std::cout << colorize(YELLOW) << "[MATH] WARNING! Calculating an empty expression! Result will be 0" << colorize(NC) << "\n";
       return 0;
     }
 

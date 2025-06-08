@@ -21,5 +21,7 @@
   "ladno": 1,
   "st": "ok",
   "minus": -1,
-  "space": "s p a c e"
+  "space": "s p a c e",
+  "empty": " ",
+  "empty2": ""
 }
