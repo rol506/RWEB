@@ -421,12 +421,12 @@ namespace rweb
           res = temp.getStatusResponce();
         }
 
-        res += temp.getAllCookieHeaders(); // \r\n included
-
         if (code[0] == '3')
         {
           res += "Location: " + temp.getRedirectLocation() + "\r\n";
         }
+
+        res += temp.getAllCookieHeaders(); // \r\n included
 
         res += "\r\n";
         res += temp.getHTML();
@@ -497,12 +497,12 @@ namespace rweb
             res = temp.getStatusResponce();
           }
 
-          res += temp.getAllCookieHeaders(); // \r\n included
-
           if (code[0] == '3')
           {
             res += "Location: " + temp.getRedirectLocation() + "\r\n";
           }
+
+          res += temp.getAllCookieHeaders(); // \r\n included
 
           res += "\r\n";
           res += temp.getHTML();
@@ -531,14 +531,14 @@ namespace rweb
       } else {
         res = temp.getStatusResponce();
       }
-
-      //---ADDITIONAL HEADERS---
-      res += temp.getAllCookieHeaders(); // \r\n included
       
       if (code[0] == '3') //redirect
       {
         res += "Location: " + temp.getRedirectLocation() + "\r\n";
       }
+
+      //---ADDITIONAL HEADERS---
+      res += temp.getAllCookieHeaders(); // \r\n included
 
       //end of header section
       res += "\r\n";
@@ -561,12 +561,12 @@ namespace rweb
             res = temp.getStatusResponce();
           }
 
-          res += temp.getAllCookieHeaders(); // \r\n included
-
           if (code[0] == '3')
           {
             res += "Location: " + temp.getRedirectLocation() + "\r\n";
           }
+
+          res += temp.getAllCookieHeaders(); // \r\n included
 
           res += "\r\n";
           res += temp.getHTML();

@@ -20,5 +20,6 @@
   "some_value": 2,
   "ladno": 1,
   "st": "ok",
-  "minus": -1
+  "minus": -1,
+  "space": "s p a c e"
 }

@@ -791,6 +791,17 @@ namespace rweb
                 }
 
                 attributes.emplace_back(token->second);
+              } else if (token->first == FLAG)
+              {
+                if (token->second == "str")
+                {
+                  strFlag = true;
+                } else if (token->second == "safe")
+                {
+                  safeFlag = true;
+                } else {
+                  std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
+                }
               }
             }
 
@@ -1488,6 +1499,11 @@ namespace rweb
         std::size_t end = i-2;
         while (true)
         {
+          if (code[i] == ' ')
+          {
+            i++;
+            continue;
+          }
 
           if (i+1 == code.size()) //end of file
           {
@@ -1564,7 +1580,7 @@ namespace rweb
           {
             tokens.emplace_back(FLAG, tmp.substr(1));
             tmp = code[i];
-          } else if (isOperator(last) && !isOperator(last))
+          } else if (isOperator(first) && !isOperator(last))
           {
             tokens.emplace_back(OPERATOR, trim(tmp));
             tmp = code[i];
@@ -1670,7 +1686,7 @@ namespace rweb
     std::string result = "";
     for (auto it: m_cookies)
     {
-      std::string temp = "Set-Cookie: " + it.first + "=" + it.second.value + ";";
+      std::string temp = "Set-Cookie: " + it.first + "=" + it.second.value;
 
       if (it.second.maxAgeSeconds > 0)
       {
@@ -1704,12 +1720,14 @@ namespace rweb
           + (dm.tm_min >= 10 ? std::to_string(dm.tm_min) : "0" + std::to_string(dm.tm_min)) + ":"
           + (dm.tm_sec >= 10 ? std::to_string(dm.tm_sec) : "0" + std::to_string(dm.tm_sec)) + " GMT";
 
-        temp += " Expires=" + time + ";";
-        temp += " Max-Age=" + std::to_string(it.second.maxAgeSeconds) + ";";
+        temp += "; Expires=" + time;
+        temp += "; Max-Age=" + std::to_string(it.second.maxAgeSeconds);
       }
 
       if (it.second.httpOnly)
-        temp += " HttpOnly;";
+        temp += "; HttpOnly";
+
+      temp.erase(std::find(temp.begin(), temp.end(), '\0'), temp.end());
 
       temp += "\r\n";
 
