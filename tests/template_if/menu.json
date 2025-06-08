@@ -23,5 +23,13 @@
   "minus": -1,
   "space": "s p a c e",
   "empty": " ",
-  "empty2": ""
+  "empty2": "",
+  "arr": [
+    {
+      "element": "value1"
+    },
+    {
+      "element": "value2"
+    }
+  ]
 }

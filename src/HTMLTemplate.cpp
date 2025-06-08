@@ -110,7 +110,7 @@ namespace rweb
     } else {
       std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
       return "";
-    } 
+    }
   }
 
   static const inline std::string stringifyJson(const nlohmann::json::const_iterator& json)
@@ -171,8 +171,166 @@ namespace rweb
       std::cout << "{ " << typeToString(it.first) << " - " << it.second << " }\n";
     }std::cout << "----TOKENS_END----\n";*/
 
-    if (input.begin()->first == IF)
+    if (input.begin()->first == IF && (std::find_if(input.begin(), input.end(), [](const std::pair<TOKEN_TYPE, std::string>& in){return in.first == COMPARISON_OPERATOR;}) == input.end()))
     {
+      //check if
+      auto token = input.begin();
+      bool found = true;
+
+      nlohmann::json val;
+      std::vector<std::string> attributes;
+      while (true)
+      {
+        ++token;
+        if (token == input.end())
+        {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+        
+        if (token->first == VARIABLE)
+        {
+          std::string name = token->second;
+
+          token++;
+          if (token == input.end())
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+            return std::nullopt;
+          }
+
+          if (token->first == MATH && token->second == ".")
+          {
+            attributes.push_back(name);
+            while (true)
+            {
+              token++;
+              if (token == input.end())
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+                return std::nullopt;
+              }
+
+              if (token->first != MATH && token->first != VARIABLE)
+                break;
+
+              if (token->first == VARIABLE)
+              {
+                attributes.push_back(token->second);
+              }
+
+              token++;
+              if (token == input.end())
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+                return std::nullopt;
+              } 
+
+              if (token->first != MATH || token->second != ".")
+              {
+                break;
+              }
+            }
+
+            auto r = getJson(json, attributes);
+            if (!r)
+            {
+              found = false;
+              break;
+            }
+
+            {
+              val = *r;
+              attributes.clear();
+            }
+          } else {
+            token--;
+            attributes.clear();
+
+            auto ptr = json.find(token->second);
+            token++;
+            if (ptr != json.end())
+            {
+              val = *ptr;
+            } else {
+              found = false;
+              break;
+            }
+          }
+
+          break;
+        } else if (token->first == MATH)
+        {
+          val = std::stoi(token->second);
+        } else if (token->first == IF_BODY)
+        {
+          break;
+        } else if (token->first == STRING)
+        {
+          val = token->second;
+        } else {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected token " << typeToString(token->first) << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+      }
+
+      std::string true_body = "";
+      std::string else_body = "";
+
+      if (token != input.end())
+      {
+        if (token->first != IF_BODY)
+        {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the IF_BODY token!" << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+
+        true_body = trim(token->second);
+        token++;
+
+        if (token != input.end())
+        {
+          if (token->first != ELSE_BODY)
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the ELSE_BODY token!" << colorize(NC) << "\n";
+            return std::nullopt;
+          }
+
+          else_body = trim(token->second);
+        }
+
+      }
+
+      bool result;
+
+      if (!found)
+      {
+        std::cout << "not found!\n";
+        result = false;
+      } else {
+        if (val.is_null())
+        {
+          result = false;
+        } else if (val.is_array() || val.is_object())
+        {
+          result = val.size() > 0;
+        } else if (val.is_string())
+        {
+          result = !trim((std::string)val).empty();
+        } else if (val.is_number())
+        {
+          result = static_cast<int>(val) > 0;
+        } else {
+          std::cerr << colorize(RED) << "[TEMPLATE] Cannot check unsupported type json!" << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+      }
+
+      return result ? true_body : else_body;
+
+    } else if (input.begin()->first == IF)
+    {
+      //default if
       auto token = input.begin()+1;
       
       std::string lv = "";
@@ -242,28 +400,18 @@ namespace rweb
             }
 
             auto r = getJson(json, attributes);
-            bool unfound = false;
             if (!r)
             {
-              if ((++token)->first == IF_BODY)
-              {
-                --token;
-                unfound = true;
-              } else
-              {
-                --token;
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
 
-                for (int it = 1; it < attributes.size(); ++it)
-                {
-                  std::cerr << "." << attributes[it];
-                }
-                std::cerr << colorize(NC) << "\n";
-                return std::nullopt;
+              for (int it = 1; it < attributes.size(); ++it)
+              {
+                std::cerr << "." << attributes[it];
               }
+              std::cerr << colorize(NC) << "\n";
+              return std::nullopt;
             }
 
-            if (!unfound)
             {
               nlohmann::json val = *r;
               lv += stringifyJson(val);
@@ -282,15 +430,8 @@ namespace rweb
               val = *ptr;
               lv += stringifyJson(val);
             } else {
-              if ((++token)->first == IF_BODY)
-              {
-                --token;
-                unfound = true;
-              } else {
-                --token;
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
-                return std::nullopt;
-              }
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+              return std::nullopt;
             }
           }
           
@@ -301,10 +442,6 @@ namespace rweb
         {
           op = token->second;
           break;
-        } else if (token->first == IF_BODY)
-        {
-          rv = "";
-          break;
         } else {
           std::cerr << colorize(RED) << "[TEMPLATE] Unexpected token " << typeToString(token->first) << " in the IF statement!" << colorize(NC) << "\n";
           return std::nullopt;
@@ -313,8 +450,7 @@ namespace rweb
         token++;
       }
 
-      //rv
-      if (!op.empty())
+      //rv 
       {
         token++;
         while (true)
@@ -452,11 +588,6 @@ namespace rweb
       long long r_res = 0;
       bool useStrings = false;
 
-      if (trim(lv).empty())
-      {
-        return else_body.empty() ? "" : else_body;
-      }
-
       {
         //left math
         {
@@ -495,30 +626,6 @@ namespace rweb
           r_res = std::stoi(rv);
         } catch (std::invalid_argument& e) {
           useStrings = true;
-        }
-      }
-
-      if (op.empty())
-      {
-        if (useStrings)
-        {
-          if (trim(lv).empty())
-          {
-            //false
-            return else_body.empty() ? "" : else_body;
-          } else {
-            //true
-            return true_body;
-          }
-        } else {
-          if (l_res == 0)
-          {
-            //false
-            return else_body.empty() ? "" : else_body;
-          } else {
-            //true
-            return true_body;
-          }
         }
       }
 
