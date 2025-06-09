@@ -34,13 +34,6 @@ namespace rweb {
 
   typedef HTMLTemplate (*HTTPCallback)(const Request r);
 
-  //---FRAMEWORK-INTERNAL---
-
-  static std::string getExecutablePath();
-  static std::string calculateResourcePath(size_t level);
-  static Request parseRequest(const std::string request);
-  static void handleClient(const Request r, const SOCKFD newsockfd);
-
   //---FRAMEWORK---
 
   std::string describeError();
@@ -55,10 +48,10 @@ namespace rweb {
   void setPort(const int port);
   void addRoute(const std::string& path, const HTTPCallback callback);
   void addResource(const std::string& URLpath, const std::string& resourcePath, const std::string& contentType);
+  void addDynamicResource(const std::string& URLPrefix, const std::string& resourceFolderPrefix, const std::string& contentType);
   HTMLTemplate redirect(const std::string& location, const std::string& statusResponce=HTTP_303);
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
   HTMLTemplate abort(const std::string& statusResponce);
-  std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType);
   void setErrorHandler(const int code, const HTTPCallback callback);
 
   //returns false on error.

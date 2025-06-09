@@ -1,3 +1,4 @@
+#include "Utility.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -28,8 +29,9 @@ int main()
 
   rweb::addRoute("/", [](const rweb::Request r){return rweb::redirect("/index");});
   rweb::addRoute("/index", &homePage);
-  rweb::addRoute("/home", &homePage);
+  rweb::addRoute("/abort", [](const rweb::Request r){return rweb::abort(rweb::HTTP_401);});
   rweb::setErrorHandler(404, [](const rweb::Request r){return rweb::redirect("/index");});
+  rweb::setErrorHandler(401, &homePage);
 
   rweb::addResource("/style.css", "style.css", "text/css");
 

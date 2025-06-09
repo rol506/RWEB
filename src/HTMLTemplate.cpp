@@ -292,11 +292,10 @@ namespace rweb
         {
           if (token->first != ELSE_BODY)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the ELSE_BODY token!" << colorize(NC) << "\n";
-            return std::nullopt;
+            else_body = "";
+          } else {
+            else_body = trim(token->second);
           }
-
-          else_body = trim(token->second);
         }
 
       }
@@ -305,7 +304,6 @@ namespace rweb
 
       if (!found)
       {
-        std::cout << "not found!\n";
         result = false;
       } else {
         if (val.is_null())
@@ -316,10 +314,16 @@ namespace rweb
           result = val.size() > 0;
         } else if (val.is_string())
         {
-          result = !trim((std::string)val).empty();
+          try {
+            int id = std::stoi((std::string)val);
+            result = id != 0;
+          } catch (std::invalid_argument& e)
+          {
+            result = !trim((std::string)val).empty();
+          }
         } else if (val.is_number())
         {
-          result = static_cast<int>(val) > 0;
+          result = static_cast<int>(val) != 0;
         } else {
           std::cerr << colorize(RED) << "[TEMPLATE] Cannot check unsupported type json!" << colorize(NC) << "\n";
           return std::nullopt;
@@ -1891,6 +1895,8 @@ namespace rweb
 
       if (it.second.httpOnly)
         temp += "; HttpOnly";
+
+      temp += "; Path=/";
 
       temp.erase(std::find(temp.begin(), temp.end(), '\0'), temp.end());
 

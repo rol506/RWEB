@@ -39,6 +39,26 @@ namespace rweb
 #endif
   };
 
+  //---MIME TYPES---
+  namespace MIME {
+    const std::string octetStream = "application/octet-stream";
+
+    const std::string PLAINTEXT = "text/plain";
+    const std::string HTML = "text/html";
+    const std::string CSS = "text/css";
+    const std::string JAVASCRIPT = "text/javascript";
+    const std::string JS = "text/javascript";
+
+    const std::string APNG = "image/apng";
+    const std::string PNG = "image/png";
+    const std::string JPEG = "image/jpeg";
+    const std::string SVG_XML = "image/svg+xml";
+    const std::string SVG = "image/svg+xml";
+    const std::string BMP = "image/bmp";
+    const std::string GIF = "image/gif";
+    const std::string WEBP = "image/webp";
+  }
+
   //---HTTP RESPONCES---
   const std::string HTTP_200 = "HTTP/1.1 200 OK\r\n";
 
@@ -60,7 +80,7 @@ namespace rweb
 
   //returns string found in file. "" in case of an error.
   //'filePath' is the target file path from resource folder.
-  std::string getFileString(const std::string& filePath);
+  const std::string getFileString(const std::string& filePath);
   //remove leading and trailing spaces in 'str'.
   std::string trim(const std::string& str);
   //returns string with replaced 'from' with 'to'.

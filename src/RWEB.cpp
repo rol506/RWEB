@@ -2,7 +2,6 @@
 
 #include <chrono>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <errno.h>
@@ -11,7 +10,7 @@
 #include <sstream>
 #include <cstdio>
 
-#include "../include/Socket.h"
+#include "Socket.h"
 #include "HTMLTemplate.h"
 #include "Utility.h"
 
@@ -26,6 +25,7 @@ namespace rweb
   static std::unordered_map<std::string, HTTPCallback> serverPaths;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static std::unordered_map<int, HTTPCallback> errorHandlers;
+  static std::unordered_map<std::string, std::pair<std::string, std::string>> serverDynamicResources;
   static int serverPort = 4221;
   static bool serverDebugMode = false;
   static bool serverProfiling = false;
@@ -51,7 +51,7 @@ namespace rweb
   }
 #endif
 
-  static std::string getExecutablePath()
+  static const std::string getExecutablePath()
   {
     if (!initialized)
     {
@@ -81,7 +81,7 @@ namespace rweb
   }
 
   //see sourcePathLevel docs
-  static std::string calculateResourcePath(size_t level)
+  static const std::string calculateResourcePath(size_t level)
   {
     std::string resPath = getExecutablePath();
 #ifdef _WIN32
@@ -155,7 +155,7 @@ namespace rweb
     return ret;
 } 
 
-  static Request parseRequest(const std::string request)
+  static const Request parseRequest(const std::string request)
   {
     Request r;
     std::string str = request;
@@ -261,12 +261,40 @@ namespace rweb
 
   void addRoute(const std::string& path, const HTTPCallback callback)
   {
-    serverPaths.emplace(path, callback);
+    std::string urlPath = path;
+    if (urlPath[0] != '/')
+      urlPath = '/';
+
+    serverPaths.emplace(urlPath, callback);
   }
 
   void addResource(const std::string& URLpath, const std::string& resourcePath, const std::string& contentType)
   {
-    serverResources.insert({URLpath, {resourcePath, contentType}});
+    std::string urlPath = URLpath;
+    if (urlPath[0] != '/')
+      urlPath = '/' + urlPath;
+
+    serverResources.insert({urlPath, {resourcePath, contentType}});
+  }
+
+  void addDynamicResource(const std::string& URLPrefix, const std::string& resourceFolderPrefix, const std::string& contentType)
+  {
+    std::string urlPrefix = URLPrefix;
+    if (urlPrefix[0] != '/')
+      urlPrefix = '/' + urlPrefix;
+
+    std::string resPrefix = resourceFolderPrefix;
+    if (resPrefix.back() != '/')
+    {
+      resPrefix += '/';
+    }
+
+    if (resPrefix[0] != '/')
+    {
+      resPrefix = '/' + resPrefix;
+    }
+
+    serverDynamicResources.insert({urlPrefix, {resPrefix, contentType}});
   }
 
   void setErrorHandler(const int code, const HTTPCallback callback)
@@ -351,6 +379,23 @@ namespace rweb
 #endif
   }
 
+  static const std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType)
+  {
+    std::string file = getFileString(filePath);
+    if (file.empty())
+    {
+      return HTTP_404 + "\r\n";
+    }
+    return statusResponce + "Content-Type: " + contentType + "\r\nContent-Length: " + std::to_string(file.size()) + "\r\nContent-Encoding: utf-8\r\n"
+      + "\r\n" + file;
+  }
+
+  static const std::string sendData(const std::string& statusResponce, const std::string& data, const std::string contentType)
+  {
+    return statusResponce + "Content-Type: " + contentType + "\r\nContent-Length: " + std::to_string(data.size()) + "\r\nContent-Encoding: utf-8\r\n"
+      + "\r\n" + data;
+  }
+
   //returns false on an error (step <level> times back to find resource folder. use only for dev purposes)
   bool init(bool debug, unsigned int level)
   {
@@ -372,6 +417,153 @@ namespace rweb
     initialized = true;
     std::cout << colorize(NC);
     return true;
+  }
+
+  static const std::string handleRequest(const HTTPCallback callback, const Request r, const std::string& initialStatus=HTTP_200)
+  {
+    HTMLTemplate temp = callback(r);
+    const std::string code = temp.getStatusResponce().substr(9, 3);
+    std::string res = "";
+
+    if (!temp.getHTML().empty())
+    {
+      res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
+    } else {
+      res = temp.getStatusResponce();
+    }
+
+    //---ADDITIONAL HEADERS---
+    res += temp.getAllCookieHeaders(); // \r\n included
+
+    if (code[0] == '3')
+    {
+      res += "Location: " + temp.getRedirectLocation() + "\r\n";
+    }
+
+    res += "\r\n";
+    res += temp.getHTML();
+
+    if (code[0] != '1' && code[0] != '2' && code[0] != '3')
+    {
+      auto it = errorHandlers.find(std::stoi(code));
+      if (it != errorHandlers.end())
+      {
+        return handleRequest(it->second, r, temp.getStatusResponce());
+      } else {
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
+        res = temp.getStatusResponce();
+        std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+
+        if (initialStatus != HTTP_200)
+        {
+          std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+        }
+
+        return res;
+      }
+    }
+
+    std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
+      temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+
+    if (initialStatus != HTTP_200)
+    {
+      std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+    }
+
+    return res;
+  }
+
+  static void handleClient(const Request r, const SOCKFD newsockfd)
+  {
+    const auto startTime = std::chrono::high_resolution_clock::now(); //for profiling
+    std::cout << colorize(NC);
+    std::string res;
+    int n = 0;
+
+    if (!r.isValid)
+    {
+      //handle 400
+      auto it = errorHandlers.find(400);
+      if (it != errorHandlers.end())
+      {
+        res = handleRequest(it->second, r, HTTP_400); 
+      } else {
+        res = HTTP_400 + "\r\n";
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9, HTTP_400.size()-11);
+      }
+    } else {
+      //process request
+      auto it = serverPaths.find(r.path);
+      if (it == serverPaths.end())
+      {
+        auto it2 = serverResources.find(r.path);
+        if (it2 != serverResources.end())
+        {
+          res = sendFile(HTTP_200, it2->second.first, it2->second.second);
+          std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
+        } else { 
+          
+          auto v = split(r.path, "/");
+          std::string currPrefix = "";
+          bool found = false;
+          for (int i=0;i<v.size();++i)
+          {
+            currPrefix += "/" + v[i];
+            auto it3 = serverDynamicResources.find(currPrefix);
+            if (it3 != serverDynamicResources.end())
+            {
+              std::string postfix = r.path.substr(currPrefix.size());
+              if (postfix[0] == '/')
+              {
+                postfix = postfix.substr(1);
+              }
+
+              std::string filePath = it3->second.first + postfix;
+              std::string data = getFileString(filePath);
+              if (data.empty())
+              {
+                found = false;
+                continue;
+              } else {
+                res = sendData(HTTP_200, data, it3->second.second);
+                std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
+                found = true;
+                break;
+              }
+            }
+          }
+
+          if (!found)
+          {
+            //handle 404
+            auto it = errorHandlers.find(404);
+            if (it != errorHandlers.end())
+            {
+              res = handleRequest(it->second, r, HTTP_404);
+            } else { 
+              res = HTTP_404 + "\r\n";
+              std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
+            }
+          }
+        }
+      } else {
+        res = handleRequest(it->second, r); 
+      }
+    }
+
+    if (getDebugState() && getProfilingMode())
+    {
+      const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
+      std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
+    } else {
+      std::cout << "\n";
+    }
+
+    //send result
+    serverSocket->sendMessage(newsockfd, res);
+    Socket::closeSocket(newsockfd);
+    return; 
   }
 
   //returns false on an error
@@ -399,218 +591,7 @@ namespace rweb
     return true;
   }
 
-  static void handleClient(const Request r, const SOCKFD newsockfd)
-  {
-    const auto startTime = std::chrono::high_resolution_clock::now(); //for profiling
-    std::cout << colorize(NC);
-    std::string res;
-    int n = 0;
 
-    if (!r.isValid)
-    {
-      //handle 400
-      auto it = errorHandlers.find(400);
-      if (it != errorHandlers.end())
-      {
-        HTMLTemplate temp = it->second(r);
-        std::string code = temp.getStatusResponce().substr(9, 3);
-        if (!temp.getHTML().empty()) //non-empty body
-        {
-          res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
-        } else {
-          res = temp.getStatusResponce();
-        }
-
-        if (code[0] == '3')
-        {
-          res += "Location: " + temp.getRedirectLocation() + "\r\n";
-        }
-
-        res += temp.getAllCookieHeaders(); // \r\n included
-
-        res += "\r\n";
-        res += temp.getHTML();
-
-        std::cout << "[RESPONCE] " << r.method << " -- ";
-        if (code[0] == '1' || code[0] == '2' || code[0] == '3')
-        {
-          std::cout << colorize(NC);
-        } else {
-          std::cout << colorize(RED);
-          res = temp.getStatusResponce();
-        }
-        std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
-          HTTP_400.substr(9, HTTP_400.size()-11);
-
-        if (getDebugState() && getProfilingMode())
-        {
-          const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
-          std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
-        } else {
-          std::cout << "\n";
-        }
-
-        serverSocket->sendMessage(newsockfd, res);
-        Socket::closeSocket(newsockfd);
-        return;
-      } else {
-        res = HTTP_400 + "\r\n";
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9);
-
-        if (getDebugState() && getProfilingMode())
-        {
-          const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
-          std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
-        } else {
-          std::cout << "\n";
-        }
-
-        serverSocket->sendMessage(newsockfd, res);
-        Socket::closeSocket(newsockfd);
-        return;
-      }
-
-      Socket::closeSocket(newsockfd);
-      return;
-    }
-  
-    //process request
-    auto it = serverPaths.find(r.path);
-    if (it == serverPaths.end())
-    {
-      auto it2 = serverResources.find(r.path);
-      if (it2 != serverResources.end())
-      {
-        res = sendFile(HTTP_200, it2->second.first, it2->second.second);
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
-      } else { 
-        //handle 404
-        auto it = errorHandlers.find(404);
-        if (it != errorHandlers.end())
-        {
-          HTMLTemplate temp = it->second(r);
-          std::string code = temp.getStatusResponce().substr(9, 3);
-          if (!temp.getHTML().empty()) //non-empty body
-          {
-            res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
-          } else {
-            res = temp.getStatusResponce();
-          }
-
-          if (code[0] == '3')
-          {
-            res += "Location: " + temp.getRedirectLocation() + "\r\n";
-          }
-
-          res += temp.getAllCookieHeaders(); // \r\n included
-
-          res += "\r\n";
-          res += temp.getHTML();
-
-          std::cout << "[RESPONCE] " << r.method << " -- ";
-          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
-          {
-            std::cout << colorize(NC);
-          } else {
-            std::cout << colorize(RED);
-            res = temp.getStatusResponce();
-          }
-          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
-            HTTP_404.substr(9, HTTP_404.size()-11);
-        } else { 
-          res = HTTP_404 + "\r\n";
-          std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
-        }
-      }
-    } else {
-      HTMLTemplate temp = it->second(r);
-      std::string code = temp.getStatusResponce().substr(9, 3);
-      if (!temp.getHTML().empty()) //non-empty body
-      {
-        res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
-      } else {
-        res = temp.getStatusResponce();
-      }
-      
-      if (code[0] == '3') //redirect
-      {
-        res += "Location: " + temp.getRedirectLocation() + "\r\n";
-      }
-
-      //---ADDITIONAL HEADERS---
-      res += temp.getAllCookieHeaders(); // \r\n included
-
-      //end of header section
-      res += "\r\n";
-      res += temp.getHTML(); //body
-
-      //handle error codes
-      if (code[0] != '1' && code[0] != '2' && code[0] != '3')
-      {
-        //handle error
-        std::string initialStatus = temp.getStatusResponce();
-        auto it = errorHandlers.find(std::stoi(code));
-        if (it != errorHandlers.end())
-        {
-          HTMLTemplate temp = it->second(r);
-          std::string code = temp.getStatusResponce().substr(9, 3);
-          if (!temp.getHTML().empty())
-          {
-            res = temp.getStatusResponce() + "Content-Type: " + temp.getContentType() + "\r\nContent-Length: " + std::to_string(temp.getHTML().size()) + "\r\n";
-          } else {
-            res = temp.getStatusResponce();
-          }
-
-          if (code[0] == '3')
-          {
-            res += "Location: " + temp.getRedirectLocation() + "\r\n";
-          }
-
-          res += temp.getAllCookieHeaders(); // \r\n included
-
-          res += "\r\n";
-          res += temp.getHTML();
-
-          std::cout << "[RESPONCE] " << r.method << " -- ";
-          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
-          {
-            std::cout << colorize(NC);
-          } else {
-            std::cout << colorize(RED);
-            res = temp.getStatusResponce();
-          }
-          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11) << " -- Handled " << 
-            initialStatus.substr(9, initialStatus.size()-11);
-        } else {
-          std::cout << "[RESPONCE] " << r.method << " -- ";
-          if (code[0] == '1' || code[0] == '2' || code[0] == '3')
-          {
-            std::cout << colorize(NC);
-          } else {
-            std::cout << colorize(RED);
-            res = temp.getStatusResponce();
-          }
-          std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
-        }
-      } else {
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
-          temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
-      }
-    }
-
-    if (getDebugState() && getProfilingMode())
-    {
-      const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
-      std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
-    } else {
-      std::cout << "\n";
-    }
-
-    //send result
-    serverSocket->sendMessage(newsockfd, res);
-    Socket::closeSocket(newsockfd);
-    return; 
-  }
 
 #ifdef __linux__
   void closeServer(int arg)
@@ -638,7 +619,7 @@ namespace rweb
 
 #endif
 
-  std::string getFileString(const std::string& filePath)
+  const std::string getFileString(const std::string& filePath)
   {
     std::ifstream f;
     f.open(resourcePath + "/" + filePath, std::ios::in | std::ios::binary);
@@ -650,17 +631,6 @@ namespace rweb
     std::stringstream buf;
     buf << f.rdbuf();
     return buf.str();
-  }
-
-  std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType)
-  {
-    std::string file = getFileString(filePath);
-    if (file.empty())
-    {
-      return HTTP_500 + "\r\n";
-    }
-    return statusResponce + "Content-Type: " + contentType + "\r\nContent-Length: " + std::to_string(file.size()) + "\r\nContent-Encoding: utf-8\r\n"
-      + "\r\n" + file;
   }
 
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce)
