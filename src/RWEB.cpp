@@ -262,8 +262,12 @@ namespace rweb
   void addRoute(const std::string& path, const HTTPCallback callback)
   {
     std::string urlPath = path;
-    if (urlPath[0] != '/')
+
+    if (urlPath.empty())
       urlPath = '/';
+
+    if (urlPath[0] != '/')
+      urlPath = '/' + urlPath;
 
     serverPaths.emplace(urlPath, callback);
   }
@@ -507,35 +511,36 @@ namespace rweb
           std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
         } else { 
           
-          auto v = split(r.path, "/");
+          std::string path = r.path;
+          if (path.back() == '/')
+            path = path.substr(0, path.size()-1);
           std::string currPrefix = "";
+          std::string postfix = "";
           bool found = false;
-          for (int i=0;i<v.size();++i)
+
+          std::size_t pos = path.rfind("/");
+          if (pos == std::string::npos)
           {
-            currPrefix += "/" + v[i];
+            found = false;
+          } else {
+            currPrefix = path.substr(0, pos);
+            postfix = path.substr(pos+1, path.size()-pos-1);
+
             auto it3 = serverDynamicResources.find(currPrefix+"/");
             if (it3 != serverDynamicResources.end())
             {
-              std::string postfix = r.path.substr(currPrefix.size());
-              if (postfix[0] == '/')
-              {
-                postfix = postfix.substr(1);
-              }
-
-              std::string filePath = it3->second.first + postfix;
+              std::string filePath = it3->second.first + postfix; // '/' included
               std::string data = getFileString(filePath);
               if (data.empty())
               {
                 found = false;
-                continue;
               } else {
                 res = sendData(HTTP_200, data, it3->second.second);
                 std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
                 found = true;
-                break;
               }
             }
-          }
+          } 
 
           if (!found)
           {
