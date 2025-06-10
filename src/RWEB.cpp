@@ -283,6 +283,9 @@ namespace rweb
     if (urlPrefix[0] != '/')
       urlPrefix = '/' + urlPrefix;
 
+    if (urlPrefix.back() != '/')
+      urlPrefix += '/';
+
     std::string resPrefix = resourceFolderPrefix;
     if (resPrefix.back() != '/')
     {
@@ -510,7 +513,7 @@ namespace rweb
           for (int i=0;i<v.size();++i)
           {
             currPrefix += "/" + v[i];
-            auto it3 = serverDynamicResources.find(currPrefix);
+            auto it3 = serverDynamicResources.find(currPrefix+"/");
             if (it3 != serverDynamicResources.end())
             {
               std::string postfix = r.path.substr(currPrefix.size());

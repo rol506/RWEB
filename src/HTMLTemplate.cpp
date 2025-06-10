@@ -970,6 +970,8 @@ namespace rweb
                 } else {
                   std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
                 }
+              } else {
+                break;
               }
             }
 
@@ -1261,7 +1263,7 @@ namespace rweb
                 return false;
               }
 
-              i += pos2-pos1;
+              i = pos2;
 
               std::string found = code.substr(pos1+2, pos2-pos1-2);
               std::string oper = "";
