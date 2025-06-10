@@ -70,7 +70,7 @@ namespace rweb
 
   static bool isOperator(const char c) noexcept
   {
-    return c == '/' || c == '*' || c == '+' || c == '-';
+    return c == '/' || c == '*' || c == '+' || c == '-' || c == '%';
   }
 
   //int types:
@@ -107,6 +107,8 @@ namespace rweb
       return 2.0f;
     if (oper == "**")
       return 3.1f;
+    if (oper == "%")
+      return 0.9f;
 
     std::cerr << colorize(RED) << "[CALC] Error! Cannot get operator value: " << '"' << oper << '"' << colorize(NC) << "\n";
     return 0.0f;
@@ -124,6 +126,8 @@ namespace rweb
       return left_operand / right_operand;
     if (oper == "**")
       return pow(left_operand, right_operand);
+    if (oper == "%")
+      return static_cast<int>(left_operand) % static_cast<int>(right_operand);
 
     std::cerr << colorize(RED) << "[CALC] Failed to process operation! Unknown operator: " << '"' << oper << '"' << colorize(NC) << "\n";
     return 0;

@@ -1047,7 +1047,7 @@ namespace rweb
 
   static inline bool isOperator(const char c)
   {
-    return c == '*' || c == '-' || c == '+' || c == '/';
+    return c == '*' || c == '-' || c == '+' || c == '/' || c == '%';
   }
 
   static inline bool isComparative(const char c)
@@ -1749,7 +1749,7 @@ namespace rweb
           {
             tokens.emplace_back(FLAG, tmp.substr(1));
             tmp = code[i];
-          } else if (isOperator(first) && !isOperator(last))
+          } else if (isOperator(first) && !isOperator(code[i]))
           {
             tokens.emplace_back(OPERATOR, trim(tmp));
             tmp = code[i];
