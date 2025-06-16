@@ -33,6 +33,7 @@ namespace rweb {
   }; 
 
   typedef HTMLTemplate (*HTTPCallback)(const Request r);
+  typedef std::map<std::string, std::string> Session;
 
   //---FRAMEWORK---
 
@@ -53,6 +54,7 @@ namespace rweb {
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
   HTMLTemplate abort(const std::string& statusResponce);
   void setErrorHandler(const int code, const HTTPCallback callback);
+  Session* getSession(const Request r);
 
   //returns false on error.
   bool init(bool debug = false, unsigned int level=0);

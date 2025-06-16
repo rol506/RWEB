@@ -14,6 +14,13 @@ namespace rweb
   public:
     HTMLTemplate(const char* html);
     HTMLTemplate(const std::string& html);
+    HTMLTemplate();
+
+    HTMLTemplate(const HTMLTemplate& temp);
+    HTMLTemplate& operator=(const HTMLTemplate& temp);
+    HTMLTemplate& operator=(HTMLTemplate&& temp);
+    HTMLTemplate(HTMLTemplate&& temp);
+
     const std::string& getHTML() const;
     const std::string& getFileName() const;
     const std::string& getStatusResponce() const;

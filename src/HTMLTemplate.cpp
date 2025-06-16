@@ -1834,6 +1834,79 @@ namespace rweb
     m_responce = HTTP_200;
   }
 
+  HTMLTemplate::HTMLTemplate()
+  {
+    m_responce = HTTP_200;
+  }
+
+  HTMLTemplate::HTMLTemplate(const HTMLTemplate& temp)
+  {
+    m_html = temp.m_html;
+    m_templateFileName = temp.m_templateFileName;
+    m_responce = temp.m_responce;
+    m_encoding = temp.m_encoding;
+    m_contentType = temp.m_contentType;
+    m_location = temp.m_location;
+    m_cookies = temp.m_cookies;
+  }
+
+  HTMLTemplate& HTMLTemplate::operator=(const HTMLTemplate& temp)
+  {
+    if (this != &temp)
+    {
+      m_html = temp.m_html;
+      m_templateFileName = temp.m_templateFileName;
+      m_responce = temp.m_responce;
+      m_encoding = temp.m_encoding;
+      m_contentType = temp.m_contentType;
+      m_location = temp.m_location;
+      m_cookies = temp.m_cookies;
+    }
+    return *this;
+  }
+
+  HTMLTemplate& HTMLTemplate::operator=(HTMLTemplate&& temp)
+  {
+    if (this != &temp)
+    {
+      m_html = temp.m_html;
+      m_templateFileName = temp.m_templateFileName;
+      m_responce = temp.m_responce;
+      m_encoding = temp.m_encoding;
+      m_contentType = temp.m_contentType;
+      m_location = temp.m_location;
+      m_cookies = temp.m_cookies;
+
+      temp.m_html = "";
+      temp.m_templateFileName = "";
+      temp.m_responce = HTTP_500; //if server sends empty HTML -> error
+      temp.m_encoding = "";
+      temp.m_contentType = "";
+      temp.m_location = "";
+      temp.m_cookies.clear();
+    }
+    return *this;
+  }
+
+  HTMLTemplate::HTMLTemplate(HTMLTemplate&& temp)
+  {
+    m_html = temp.m_html;
+    m_templateFileName = temp.m_templateFileName;
+    m_responce = temp.m_responce;
+    m_encoding = temp.m_encoding;
+    m_contentType = temp.m_contentType;
+    m_location = temp.m_location;
+    m_cookies = temp.m_cookies;
+
+    temp.m_html = "";
+    temp.m_templateFileName = "";
+    temp.m_responce = HTTP_500; //if server sends empty HTML -> error
+    temp.m_encoding = "";
+    temp.m_contentType = "";
+    temp.m_location = "";
+    temp.m_cookies.clear();
+  }
+
   const std::optional<std::string> HTMLTemplate::getCookieValue(const std::string& name) const
   {
     auto it = m_cookies.find(name);

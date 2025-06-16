@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <map>
 #include <errno.h>
 #include <thread>
 #include <fstream>
@@ -26,6 +27,8 @@ namespace rweb
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static std::unordered_map<int, HTTPCallback> errorHandlers;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverDynamicResources;
+  static std::map<unsigned long long, Session> sessions;
+  static unsigned long long nextSessionID = 1; // 0 is invalid!
   static int serverPort = 4221;
   static bool serverDebugMode = false;
   static bool serverProfiling = false;
@@ -428,7 +431,46 @@ namespace rweb
 
   static const std::string handleRequest(const HTTPCallback callback, const Request r, const std::string& initialStatus=HTTP_200)
   {
-    HTMLTemplate temp = callback(r);
+    HTMLTemplate temp; 
+
+    //TODO
+    //check session
+    {
+      auto it = r.cookies.find("sessionID");
+      if (it != r.cookies.end())
+      {
+        unsigned long long sessionID;
+        try {
+          sessionID = std::stoull(it->second);
+          auto it2 = sessions.find(sessionID);
+          if (it2 != sessions.end())
+          {
+            //session is valid -> can continue
+            temp = callback(r);
+          } else {
+            temp = redirect(r.path, HTTP_303); //redirect
+            temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
+            Session sess;
+            sessions.emplace(nextSessionID, sess);
+            nextSessionID++;
+          }
+        } catch (std::invalid_argument& e)
+        {
+          temp = redirect(r.path, HTTP_303); //redirect
+          temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
+          Session sess;
+          sessions.emplace(nextSessionID, sess);
+          nextSessionID++;
+        }
+      } else {
+        temp = redirect(r.path, HTTP_303); //redirect
+        temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
+        Session sess;
+        sessions.emplace(nextSessionID, sess);
+        nextSessionID++;
+      }
+    }
+
     const std::string code = temp.getStatusResponce().substr(9, 3);
     std::string res = "";
 
@@ -672,6 +714,15 @@ namespace rweb
     HTMLTemplate temp = "";
     temp.m_responce = statusResponce;
     return temp;
+  }
+
+  Session* getSession(const Request r)
+  {
+    //if this func is used -> all is checked
+    auto it = r.cookies.find("sessionID");
+    unsigned long long sessionID = std::stoi(it->second);
+    auto it2 = sessions.find(sessionID);
+    return &it2->second;
   }
 
 }
