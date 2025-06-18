@@ -22,6 +22,7 @@ add_library(RWEB
   src/Utility.cpp
 )
 target_include_directories(RWEB PUBLIC include)
+target_compile_features(RWEB PUBLIC cxx_std_17)
 
 # everything below can be deleted (it's for testing)
 add_executable(app
