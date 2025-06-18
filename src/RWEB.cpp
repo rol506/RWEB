@@ -429,11 +429,19 @@ namespace rweb
     return true;
   }
 
+  static unsigned long long getEmptySessionID()
+  {
+    //allocate new session
+    Session sess;
+    sessions.emplace(nextSessionID, sess);
+    nextSessionID++;
+    return nextSessionID-1;
+  }
+
   static const std::string handleRequest(const HTTPCallback callback, const Request r, const std::string& initialStatus=HTTP_200)
   {
     HTMLTemplate temp; 
 
-    //TODO
     //check session
     {
       auto it = r.cookies.find("sessionID");
@@ -449,25 +457,16 @@ namespace rweb
             temp = callback(r);
           } else {
             temp = redirect(r.path, HTTP_303); //redirect
-            temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
-            Session sess;
-            sessions.emplace(nextSessionID, sess);
-            nextSessionID++;
+            temp.setCookie("sessionID", std::to_string(getEmptySessionID()), 0, true); //re-create session
           }
         } catch (std::invalid_argument& e)
         {
           temp = redirect(r.path, HTTP_303); //redirect
-          temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
-          Session sess;
-          sessions.emplace(nextSessionID, sess);
-          nextSessionID++;
+          temp.setCookie("sessionID", std::to_string(getEmptySessionID()), 0, true); //re-create session
         }
       } else {
         temp = redirect(r.path, HTTP_303); //redirect
-        temp.setCookie("sessionID", std::to_string(nextSessionID), 0, true); //re-create session
-        Session sess;
-        sessions.emplace(nextSessionID, sess);
-        nextSessionID++;
+        temp.setCookie("sessionID", std::to_string(getEmptySessionID()), 0, true); //re-create session
       }
     }
 
@@ -716,13 +715,18 @@ namespace rweb
     return temp;
   }
 
-  Session* getSession(const Request r)
+  Session* getSession(const Request& r)
   {
     //if this func is used -> all is checked
     auto it = r.cookies.find("sessionID");
-    unsigned long long sessionID = std::stoi(it->second);
+    unsigned long long sessionID = std::stoull(it->second);
     auto it2 = sessions.find(sessionID);
     return &it2->second;
   }
 
+  void clearAllSessions()
+  {
+    sessions.clear();
+    std::cout << colorize(YELLOW) << "[SERVER] All sessions are cleared!" << colorize(NC) << "\n";
+  }
 }
