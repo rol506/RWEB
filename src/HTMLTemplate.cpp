@@ -158,9 +158,9 @@ namespace rweb
   }
 
   //false on an error
-  static bool lexer_analyze(std::string& code, const nlohmann::json& json);
+  static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann::json& json);
 
-  static const std::optional<std::string> parser_eval(std::vector<std::pair<TOKEN_TYPE, std::string>>& input, const nlohmann::json& _json, bool* error = nullptr)
+  static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::vector<std::pair<TOKEN_TYPE, std::string>>& input, const nlohmann::json& _json, bool* error = nullptr)
   {
     nlohmann::json json = _json; //working copy
     std::string result = "";
@@ -706,7 +706,7 @@ namespace rweb
 
       struct Variable {
         std::string name;
-        std::variant<std::string, nlohmann::json> value;
+        nlohmann::json value;
       };
 
       std::vector<Variable> variables;
@@ -813,20 +813,10 @@ namespace rweb
             }
 
             nlohmann::json innerJson = json;
-            try {
-              innerJson[variables[0].name] = std::get<std::string>(variables[0].value);
-            } catch (const std::bad_variant_access& e)
-            {
-              innerJson[variables[0].name] = std::get<nlohmann::json>(variables[0].value);
-            }
-            try {
-              innerJson[variables[1].name] = std::get<std::string>(variables[1].value);
-            } catch (const std::bad_variant_access& e)
-            {
-              innerJson[variables[1].name] = std::get<nlohmann::json>(variables[1].value);
-            }
+            innerJson[variables[0].name] = variables[0].value;
+            innerJson[variables[1].name] = variables[1].value;
             
-            if (!lexer_analyze(tmp, innerJson))
+            if (!lexer_analyze(templ, tmp, innerJson))
             {
               return std::nullopt;
             }
@@ -841,6 +831,57 @@ namespace rweb
         } else {
           std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the json array \"" << argName << "\"!" << colorize(NC) << "\n";
           return std::nullopt;
+        }
+
+      } else if (token->second == "get_flashed_messages") 
+      {
+        if (variables.size() != 1 && variables.size() != 2)
+        {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages uses exactly 1 or 2 variables! " << variables.size() << " provided!" 
+            << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+
+        token++;
+        if (token->first == ARGUMENT)
+        {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages does not require any arguments!" << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+
+        if (token->first != FOR_BODY)
+        {
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find FOR_BODY token!" << colorize(NC) << "\n";
+          return std::nullopt;
+        }
+
+        auto msg = templ->getFlashedMessages();
+        while (!msg->empty())
+        {
+          std::string tmp = token->second;
+          if (variables.size() == 1)
+          {
+            variables[0].value = msg->top().first;
+          } else {
+            variables[0].value = msg->top().second;
+            variables[1].value = msg->top().first;
+          }
+
+          nlohmann::json innerJson = json;
+          for (auto it: variables)
+          {
+            innerJson[it.name] = it.value;
+          }
+
+          if (!lexer_analyze(templ, tmp, innerJson))
+          {
+            return std::nullopt;
+          }
+
+          //result
+          result += trim(tmp);
+
+          msg->pop();
         }
 
       } else {
@@ -896,7 +937,7 @@ namespace rweb
             nlohmann::json innerJson = json;
             innerJson[varName] = it;
             
-            if (!lexer_analyze(tmp, innerJson))
+            if (!lexer_analyze(templ, tmp, innerJson))
             {
               return std::nullopt;
             }
@@ -1058,7 +1099,7 @@ namespace rweb
   }
 
   //false on an error
-  static bool lexer_analyze(std::string& code, const nlohmann::json& json)
+  static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann::json& json)
   {
     std::vector<std::pair<TOKEN_TYPE, std::string>> tokens;
 
@@ -1309,7 +1350,7 @@ namespace rweb
               i++;
             }
 
-            auto res = parser_eval(tokens, json);
+            auto res = parser_eval(templ, tokens, json);
             if (!res)
             {
               return false;
@@ -1524,7 +1565,7 @@ namespace rweb
               }
 
               bool is_ok = true;
-              auto res = parser_eval(tokens, json, &is_ok);
+              auto res = parser_eval(templ, tokens, json, &is_ok);
               tokens.clear();
               if (!is_ok || !res)
                 return false;
@@ -1709,7 +1750,7 @@ namespace rweb
             i += 2;
 
             end = i;
-            auto res = parser_eval(tokens, json);
+            auto res = parser_eval(templ, tokens, json);
             if (!res)
             {
               return false;
@@ -1778,7 +1819,7 @@ namespace rweb
   void HTMLTemplate::renderJSON(const nlohmann::json& json)
   {
     std::string reserve_copy = m_html;
-    if (!lexer_analyze(reserve_copy, json))
+    if (!lexer_analyze(this, reserve_copy, json))
     {
       std::cout << colorize(RED) << "[TEMPLATE] Rendering error detected! No changes have been made!" << colorize(NC) << "\n";
       m_responce = HTTP_500;
@@ -1981,5 +2022,16 @@ namespace rweb
     }
 
     return result;
+  }
+
+  //flashes message to the request
+  void HTMLTemplate::flash(const std::string& message, const std::string& category)
+  {
+    m_flashes.emplace(message, category);
+  }
+
+  std::stack<std::pair<std::string, std::string>>* HTMLTemplate::getFlashedMessages()
+  {
+    return &m_flashes;
   }
 }

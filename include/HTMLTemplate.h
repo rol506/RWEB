@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <optional>
+#include <stack>
 
 #include "nlohmann/json.hpp"
 
@@ -36,6 +37,10 @@ namespace rweb
 
     //Renderes a template with specified json
     void renderJSON(const nlohmann::json& json);
+
+    //flashes message to the request
+    void flash(const std::string& message, const std::string& category);
+    std::stack<std::pair<std::string, std::string>>* getFlashedMessages();
   private:
 
     struct Cookie {
@@ -51,6 +56,7 @@ namespace rweb
     std::string m_contentType;
     std::string m_location; //for redirects
     std::map<std::string, Cookie> m_cookies;
+    std::stack<std::pair<std::string, std::string>> m_flashes; //message category
 
     friend HTMLTemplate createTemplate(const std::string&, const std::string&);
     friend HTMLTemplate redirect(const std::string&, const std::string&);

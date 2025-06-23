@@ -15,5 +15,9 @@
     </ul>
 
     <h1>{{temp.url}} - {{temp.title.title2}}</h1>
+
+    {% for cat, msg in get_flashed_messages() %}
+    <p>{{cat}} - {{msg}}</p>
+    {% endfor %}
  </body>
 </html>

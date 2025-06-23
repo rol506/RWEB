@@ -9,6 +9,9 @@ int main()
   rweb::setResourcePath("/home/rol506/proj/C++/RWEB/tests/template/res/");
   rweb::HTMLTemplate temp = rweb::createTemplate("index.html", rweb::HTTP_200);
 
+  temp.flash("ladno", "info");
+  temp.flash("not ladno", "info");
+
   nlohmann::json json = nlohmann::json::parse(rweb::getFileString("../menu.json"));
   json["currentURL"] = "/ladno";
 
