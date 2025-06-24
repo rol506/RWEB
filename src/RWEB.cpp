@@ -715,13 +715,13 @@ namespace rweb
     return temp;
   }
 
-  Session* getSession(const Request& r)
+  Session& getSession(const Request& r)
   {
     //if this func is used -> all is checked
     auto it = r.cookies.find("sessionID");
     unsigned long long sessionID = std::stoull(it->second);
     auto it2 = sessions.find(sessionID);
-    return &it2->second;
+    return it2->second;
   }
 
   void clearAllSessions()

@@ -54,7 +54,7 @@ namespace rweb {
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
   HTMLTemplate abort(const std::string& statusResponce);
   void setErrorHandler(const int code, const HTTPCallback callback);
-  Session* getSession(const Request& r);
+  Session& getSession(const Request& r);
   void clearAllSessions();
 
   //returns false on error.
