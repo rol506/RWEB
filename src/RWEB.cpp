@@ -275,6 +275,25 @@ namespace rweb
     serverPaths.emplace(urlPath, callback);
   }
 
+  std::optional<HTTPCallback> getRoute(const std::string& path)
+  {
+    std::string urlPath = path;
+
+    if (urlPath.empty())
+      urlPath = '/';
+
+    if (urlPath[0] != '/')
+      urlPath = '/' + urlPath;
+
+    auto it = serverPaths.find(urlPath);
+    if (it != serverPaths.end())
+    {
+      return it->second;
+    }
+
+    return std::nullopt;
+  }
+
   void addResource(const std::string& URLpath, const std::string& resourcePath, const std::string& contentType)
   {
     std::string urlPath = URLpath;
