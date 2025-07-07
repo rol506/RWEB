@@ -19,6 +19,9 @@
 #include <signal.h>
 #endif
 
+//if defined RWEB will output every single request to the console before parsing it
+//#define RWEB_DEBUG_OUTPUT_REQUEST
+
 namespace rweb
 {
   static std::string resourcePath = "";
@@ -162,6 +165,9 @@ namespace rweb
   {
     Request r;
     std::string str = request;
+#ifdef RWEB_DEBUG_OUTPUT_REQUEST
+    std::cout << request << "\n";
+#endif
     std::size_t pos;
 
     //method
@@ -195,7 +201,7 @@ namespace rweb
         r.isValid = false;
         return r;
       } else {
-        std::size_t pos2 = str.find_first_of("\r\n", pos1);
+        std::size_t pos2 = str.find_first_of("\r\n;", pos1);
         if (pos2 == std::string::npos)
         {
           r.isValid = false;
@@ -207,16 +213,19 @@ namespace rweb
         pos1 = str.find_last_of("\n")+1;
         std::string body = str.substr(pos1);
 
-        auto v = split(body, "&");
-        for (auto it: v)
-        {
-          std::size_t pos = it.find_first_of("=");
-          r.body.emplace(trim(urlDecode(it.substr(0, pos))), trim(urlDecode(it.substr(pos+1))));
-        }
-
-        if (r.contentType == "application/x-www-form-urlencoded")
+        if (r.contentType == MIME::FORMURLENCODED)
         {
           r.isValid = true;
+          auto v = split(body, "&");
+          for (auto it: v)
+          {
+            std::size_t pos = it.find_first_of("=");
+            r.body.emplace(trim(urlDecode(it.substr(0, pos))), trim(urlDecode(it.substr(pos+1))));
+          }
+        } else if (r.contentType == MIME::PLAINTEXT)
+        {
+          r.isValid = true;
+          r.body.emplace("text", trim(urlDecode(body)));
         } else {
           r.isValid = false;
           return r;

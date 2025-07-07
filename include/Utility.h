@@ -57,6 +57,8 @@ namespace rweb
     const std::string BMP = "image/bmp";
     const std::string GIF = "image/gif";
     const std::string WEBP = "image/webp";
+
+    const std::string FORMURLENCODED = "application/x-www-form-urlencoded";
   }
 
   //---HTTP RESPONCES---
