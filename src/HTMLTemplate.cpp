@@ -7,7 +7,6 @@
 #include <vector>
 #include <sstream>
 #include <optional>
-#include <variant>
 #include <ctime>
 
 namespace rweb
@@ -139,6 +138,17 @@ namespace rweb
       std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
       return "";
     } 
+  }
+
+  static unsigned long long getCurrentLine(const std::string& file, const unsigned long long pos)
+  {
+    int cnt = 1;
+    for (int i=0;i<=pos;++i)
+    {
+      if (file[i] == '\n')
+        cnt++;
+    }
+    return cnt;
   }
 
   static const std::optional<nlohmann::json> getJson(const nlohmann::json& root, const std::vector<std::string>& names)
@@ -576,11 +586,10 @@ namespace rweb
         {
           if (token->first != ELSE_BODY)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the ELSE_BODY token!" << colorize(NC) << "\n";
-            return std::nullopt;
+            else_body = "";
+          } else {
+            else_body = trim(token->second);
           }
-
-          else_body = trim(token->second);
         }
 
       }/* else {
@@ -1123,6 +1132,10 @@ namespace rweb
             if (pos == std::string::npos || pos >= code.size())
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, end);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1130,6 +1143,10 @@ namespace rweb
             if (pos2 == std::string::npos || pos >= code.size())
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, end);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1242,6 +1259,10 @@ namespace rweb
                   if (strEnd == std::string::npos)
                   {
                     std::cerr << colorize(RED) << "[TEMPLATE] Error! Failed to parse string! Cannot find string end!" << colorize(NC) << "\n";
+                    const std::string filename = templ->getFileName();
+                    const std::string code = getFileString(filename);
+                    int cnt = getCurrentLine(code, i);
+                    std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                     return false;
                   }
 
@@ -1294,6 +1315,10 @@ namespace rweb
               if (pos1 == std::string::npos || i >= code.size())
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1301,6 +1326,10 @@ namespace rweb
               if (pos1 == std::string::npos || i >= code.size())
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1397,7 +1426,11 @@ namespace rweb
                         std::size_t pos2 = iterator.find(")");
                         if (!found && pos2 != std::string::npos)
                         {
-                          std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!\n" << "  " << iterator << colorize(NC) << "\n";
+                          std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!" << colorize(NC) << "\n";
+                          const std::string filename = templ->getFileName();
+                          const std::string code = getFileString(filename);
+                          int cnt = getCurrentLine(code, i);
+                          std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                           return false;
                         }
 
@@ -1483,6 +1516,10 @@ namespace rweb
                       if (!found && pos2 != std::string::npos)
                       {
                         std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!\n" << "  " << iterator << colorize(NC) << "\n";
+                        const std::string filename = templ->getFileName();
+                        const std::string code = getFileString(filename);
+                        int cnt = getCurrentLine(code, i);
+                        std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                         return false;
                       }
 
@@ -1523,6 +1560,10 @@ namespace rweb
                 if (pos1 == std::string::npos || i >= code.size())
                 {
                   std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
+                  const std::string filename = templ->getFileName();
+                  const std::string code = getFileString(filename);
+                  int cnt = getCurrentLine(code, i);
+                  std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                   return false;
                 }
 
@@ -1530,6 +1571,10 @@ namespace rweb
                 if (pos1 == std::string::npos || i >= code.size())
                 {
                   std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
+                  const std::string filename = templ->getFileName();
+                  const std::string code = getFileString(filename);
+                  int cnt = getCurrentLine(code, i);
+                  std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                   return false;
                 }
 
@@ -1587,6 +1632,10 @@ namespace rweb
             if (bracketStart == std::string::npos)
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1594,6 +1643,10 @@ namespace rweb
             if (bracketEnd == std::string::npos)
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1602,6 +1655,10 @@ namespace rweb
             if (bracketStart == std::string::npos)
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1609,6 +1666,10 @@ namespace rweb
             if (bracketEnd == std::string::npos)
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1618,6 +1679,10 @@ namespace rweb
             if (nameStart == std::string::npos)
             {
               std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
 
@@ -1632,6 +1697,10 @@ namespace rweb
               if (blockStart == std::string::npos)
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1639,6 +1708,10 @@ namespace rweb
               if (blockStartEnd == std::string::npos)
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1663,6 +1736,8 @@ namespace rweb
               if (blockEnd == std::string::npos)
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
+                int cnt = getCurrentLine(file, blockEndEnd);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1670,6 +1745,8 @@ namespace rweb
               if (blockEndEnd == std::string::npos)
               {
                 std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
+                int cnt = getCurrentLine(file, blockEndEnd);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
                 return false;
               }
 
@@ -1696,6 +1773,10 @@ namespace rweb
 
           } else {
             std::cerr << colorize(RED) << "[TEMPLATE] Unrecognized token \"" << trim(op) << "\"!" << colorize(NC) << "\n";
+            const std::string filename = templ->getFileName();
+            const std::string code = getFileString(filename);
+            int cnt = getCurrentLine(code, i);
+            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
             return false;
           }
         }
@@ -1753,6 +1834,10 @@ namespace rweb
             auto res = parser_eval(templ, tokens, json);
             if (!res)
             {
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i)-1;
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
               return false;
             }
             const std::string result = *res;
