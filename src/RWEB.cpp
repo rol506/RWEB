@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
-#include <map>
 #include <errno.h>
 #include <thread>
 #include <fstream>
@@ -30,7 +29,7 @@ namespace rweb
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static std::unordered_map<int, HTTPCallback> errorHandlers;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverDynamicResources;
-  static std::map<unsigned long long, Session> sessions;
+  static std::unordered_map<unsigned long long, Session> sessions;
   static unsigned long long nextSessionID = 1; // 0 is invalid!
   static int serverPort = 4221;
   static bool serverDebugMode = false;
@@ -526,8 +525,8 @@ namespace rweb
       {
         return handleRequest(it->second, r, temp.getStatusResponce());
       } else {
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
         res = temp.getStatusResponce();
+        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
         std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
 
         if (initialStatus != HTTP_200)
@@ -678,6 +677,13 @@ namespace rweb
     setShouldClose(true); 
     serverSocket = nullptr;
     std::cout << colorize(NC);
+
+    //cleanup
+    serverPaths.clear();
+    serverResources.clear();
+    errorHandlers.clear();
+    serverDynamicResources.clear();
+    sessions.clear();
   }
 #elif _WIN32
 
@@ -691,6 +697,14 @@ namespace rweb
       serverSocket = nullptr;
     }
     std::cout << colorize(NC);
+
+    //cleanup
+    serverPaths.clear();
+    serverResources.clear();
+    errorHandlers.clear();
+    serverDynamicResources.clear();
+    sessions.clear();
+
     return TRUE;
   }
 
