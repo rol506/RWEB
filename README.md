@@ -1,4 +1,4 @@
-# RWEB - Web framework by rol506
+# RWEB - C++ web framework by rol506
 
 ## Directory structure
 
