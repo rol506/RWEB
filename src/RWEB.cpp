@@ -18,14 +18,15 @@
 #include <signal.h>
 #endif
 
-//if defined RWEB will output every single request to the console before parsing it
-//#define RWEB_DEBUG_OUTPUT_REQUEST
+//if defined RWEB will output every request to the console before parsing it
+#define RWEB_DEBUG_OUTPUT_REQUEST
 
 namespace rweb
 {
   static std::string resourcePath = "";
   static std::string execPath = "";
   static std::unordered_map<std::string, HTTPCallback> serverPaths;
+  static std::unordered_map<std::string, HTTPCallback> serverSpecialPaths;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverResources;
   static std::unordered_map<int, HTTPCallback> errorHandlers;
   static std::unordered_map<std::string, std::pair<std::string, std::string>> serverDynamicResources;
@@ -158,7 +159,7 @@ namespace rweb
       }
     }
     return ret;
-} 
+  } 
 
   static const Request parseRequest(const std::string request)
   {
@@ -224,7 +225,11 @@ namespace rweb
         } else if (r.contentType == MIME::PLAINTEXT)
         {
           r.isValid = true;
-          r.body.emplace("text", trim(urlDecode(body)));
+          r.body.emplace("text", trim(body));
+        } else if (r.contentType == MIME::JSON)
+        {
+          r.isValid = true;
+          r.body.emplace("json", trim(body));
         } else {
           r.isValid = false;
           return r;
@@ -280,7 +285,90 @@ namespace rweb
     if (urlPath[0] != '/')
       urlPath = '/' + urlPath;
 
-    serverPaths.emplace(urlPath, callback);
+    //special path
+    bool warn = false;
+    bool spec = false;
+    size_t pos = urlPath.find("<");
+    size_t pos2 = urlPath.find(">");
+    if (pos != std::string::npos)
+    {
+      spec = true;
+      while (pos != std::string::npos)
+      {
+        if (pos2 < pos)
+        {
+          warn = true;
+          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>') before opening sign ('<')!\n";
+          std::cout << "[RWEB] Path: '" << path << "'\n";
+          std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+          break;
+        }
+
+        if (pos2 == std::string::npos)
+        {
+          warn = true;
+          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg opening sign ('<'), but did not contain closing sign ('>').\n";
+          std::cout << "[RWEB] Path: '" << path << "'\n";
+          std::cout << "[RWEB] Did you forget to close the arg?" << colorize(NC) << "\n";
+          break;
+        } else {
+          const std::string tmp = path.substr(pos, pos2-pos);
+          size_t tmpos = tmp.find("/");
+          if (tmpos != std::string::npos)
+          {
+            warn = true;
+            std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains '/' in the arg name!\n";
+            std::cout << "[RWEB] Path: '" << path << "'\n";
+            std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+            break;
+          }
+        }
+        pos = urlPath.find("<", pos+1);
+        pos2 = urlPath.find(">", pos2+1);
+      } 
+    } else {
+      size_t pos2 = urlPath.find(">");
+      if (pos2 != std::string::npos)
+      {
+        warn = true;
+        std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>'), but did not contain opening sign ('<').\n";
+        std::cout << "[RWEB] Path: '" << path << "'\n";
+        std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+      }
+    }
+
+    if (spec && !warn)
+    {
+      auto v = split(urlPath, "/", -1, false);
+      for (auto it: v)
+      {
+        size_t pos = it.find("<");
+        size_t pos2 = it.find(">");
+        if (pos != std::string::npos && pos2 != std::string::npos)
+        {
+          if (pos != 0 || pos2+1 != it.size())
+          {
+            warn = true;
+            std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path block contains unwanted text!\n";
+            std::cout << "[RWEB] Block: '" << it << "'. Should be '" << it.substr(pos, pos2-pos+1) << "'" << colorize(NC) << "\n";
+          }
+        }
+      }
+      if (warn)
+        std::cout << colorize(YELLOW) << "[RWEB] Path: '" << urlPath << "'" << colorize(NC) << "\n";
+    }
+
+    if (warn)
+    {
+      std::cout << colorize(YELLOW) << "[RWEB] Path warnings detected! Path will be used as a regular path!\n";
+      //std::cout << "[RWEB] Path: '" << path << "'" << colorize(NC) << "\n";
+      std::cout << colorize(NC) << "\n";
+    }
+
+    if (spec && !warn)
+      serverSpecialPaths.emplace(urlPath, callback);
+    else
+      serverPaths.emplace(urlPath, callback);
   }
 
   std::optional<HTTPCallback> getRoute(const std::string& path)
@@ -549,7 +637,7 @@ namespace rweb
     return res;
   }
 
-  static void handleClient(const Request r, const SOCKFD newsockfd)
+  static void handleClient(Request r, const SOCKFD newsockfd)
   {
     const auto startTime = std::chrono::high_resolution_clock::now(); //for profiling
     std::cout << colorize(NC);
@@ -609,6 +697,40 @@ namespace rweb
               }
             }
           } 
+
+          if (!found)
+          {
+            bool fnd = true;
+            auto v = split(r.path, "/");
+            for (auto it: serverSpecialPaths)
+            {
+              auto v2 = split(it.first, "/");
+              if (v.size() == v2.size())
+              {
+                for (int i=0;i<v2.size();++i) //check every segment
+                {
+                  size_t pos = v2[i].find("<");
+                  if (pos != std::string::npos)
+                  {
+                    r.args.push_back(v[i]);
+                  } else {
+                    if (v[i] != v2[i])
+                    {
+                      fnd = false;
+                    }
+                  }
+                }
+                if (fnd)
+                {
+                  found = true;
+                  res = handleRequest(it.second, r);
+                  break;
+                }
+                else
+                  r.args.clear();
+              }
+            }
+          }
 
           if (!found)
           {
@@ -743,9 +865,9 @@ namespace rweb
     }
 
     HTMLTemplate temp(file);
-    temp.m_contentType = templatePath == "" ? "" : "text/html";
-    temp.m_encoding = templatePath == "" ? "" : "utf-8";
-    temp.m_responce = resp;
+    temp.contentType = templatePath == "" ? "" : "text/html";
+    temp.encoding = templatePath == "" ? "" : "utf-8";
+    temp.responce = resp;
     temp.m_templateFileName = templatePath;
     return temp;
   }
@@ -753,7 +875,7 @@ namespace rweb
   HTMLTemplate abort(const std::string& statusResponce)
   {
     HTMLTemplate temp = "";
-    temp.m_responce = statusResponce;
+    temp.responce = statusResponce;
     return temp;
   }
 

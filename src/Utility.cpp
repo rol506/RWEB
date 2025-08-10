@@ -16,7 +16,7 @@ namespace rweb
     return first == std::string::npos ? "" : str.substr(first, last-first+1);
   }
 
-  std::vector<std::string> split(const std::string& s, const std::string& seperator, int maxsplit)
+  std::vector<std::string> split(const std::string& s, const std::string& seperator, int maxsplit, bool trimNeeded)
   {
     int spt = maxsplit+1;
     std::vector<std::string> output;
@@ -26,19 +26,35 @@ namespace rweb
     {
       while ((pos = s.find_first_of(seperator, pos)) != std::string::npos)
       {
-        std::string substring(trim(s.substr(prev_pos, pos-prev_pos)));
+        std::string substring;
+        if (trimNeeded)
+          substring = trim(s.substr(prev_pos, pos-prev_pos));
+        else
+          substring = s.substr(prev_pos, pos-prev_pos);
+
         if (substring.size() > 0)
         {
           output.push_back(substring);
         }
         prev_pos = ++pos;
       }
-      output.push_back(trim(s.substr(prev_pos, pos-prev_pos))); //last word
+
+      //last word
+      if (trimNeeded)
+        output.push_back(trim(s.substr(prev_pos, pos-prev_pos)));
+      else
+        output.push_back(trim(s.substr(prev_pos, pos-prev_pos)));
+
       return output;
     } else {
       while ((pos = s.find_first_of(seperator, pos)) != std::string::npos && spt > 1)
       {
-        std::string substring(trim(s.substr(prev_pos, pos-prev_pos)));
+        std::string substring;
+        if (trimNeeded)
+          substring = trim(s.substr(prev_pos, pos-prev_pos));
+        else
+          substring = s.substr(prev_pos, pos-prev_pos);
+
         if (substring.size() > 0)
         {
           output.push_back(substring);
@@ -46,7 +62,11 @@ namespace rweb
         prev_pos = ++pos;
         spt--;
       }
-      output.push_back(trim(s.substr(prev_pos, s.size()-prev_pos)));
+      if (trimNeeded)
+        output.push_back(trim(s.substr(prev_pos, s.size()-prev_pos)));
+      else
+        output.push_back(s.substr(prev_pos, s.size()-prev_pos));
+
       return output;
     }
   }

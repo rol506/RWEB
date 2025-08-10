@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #ifdef __linux__
 #include <netinet/in.h>
@@ -29,6 +30,7 @@ namespace rweb {
     std::string contentType;
     std::map<std::string, std::string> body;
     std::map<std::string, std::string> cookies;
+    std::vector<std::string> args;
     bool isValid = false;
   }; 
 

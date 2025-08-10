@@ -41,6 +41,11 @@ namespace rweb
     //flashes message to the request
     void flash(const std::string& message, const std::string& category);
     std::stack<std::pair<std::string, std::string>>* getFlashedMessages();
+
+    std::string contentType;
+    std::string encoding;
+    std::string responce;
+
   private:
 
     struct Cookie {
@@ -51,9 +56,6 @@ namespace rweb
 
     std::string m_html;
     std::string m_templateFileName;
-    std::string m_responce;
-    std::string m_encoding;
-    std::string m_contentType;
     std::string m_location; //for redirects
     std::map<std::string, Cookie> m_cookies;
     std::stack<std::pair<std::string, std::string>> m_flashes; //message category

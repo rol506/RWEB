@@ -22,6 +22,9 @@ int main()
 {
   rweb::init(false);
 
+  if (!test("2 + 2", 4))
+    return -1;
+
   if (!test("-1", -1))
     return -1;
 

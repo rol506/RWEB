@@ -1907,7 +1907,7 @@ namespace rweb
     if (!lexer_analyze(this, reserve_copy, json))
     {
       std::cout << colorize(RED) << "[TEMPLATE] Rendering error detected! No changes have been made!" << colorize(NC) << "\n";
-      m_responce = HTTP_500;
+      responce = HTTP_500;
       return;
     }
 
@@ -1926,17 +1926,17 @@ namespace rweb
 
   const std::string& HTMLTemplate::getStatusResponce() const
   {
-    return m_responce;
+    return responce;
   }
 
   const std::string& HTMLTemplate::getEncoding() const
   {
-    return m_encoding;
+    return encoding;
   }
 
   const std::string& HTMLTemplate::getContentType() const
   {
-    return m_contentType;
+    return contentType;
   } 
 
   const std::string& HTMLTemplate::getRedirectLocation() const
@@ -1947,31 +1947,31 @@ namespace rweb
   HTMLTemplate::HTMLTemplate(const char* html)
   {
     m_html = html;
-    m_contentType = "text/html";
-    m_encoding = "utf-8";
-    m_responce = HTTP_200;
+    contentType = "text/html";
+    encoding = "utf-8";
+    responce = HTTP_200;
   }
 
   HTMLTemplate::HTMLTemplate(const std::string& html)
   {
     m_html = html;
-    m_contentType = "text/html";
-    m_encoding = "utf-8";
-    m_responce = HTTP_200;
+    contentType = "text/html";
+    encoding = "utf-8";
+    responce = HTTP_200;
   }
 
   HTMLTemplate::HTMLTemplate()
   {
-    m_responce = HTTP_200;
+    responce = HTTP_200;
   }
 
   HTMLTemplate::HTMLTemplate(const HTMLTemplate& temp)
   {
     m_html = temp.m_html;
     m_templateFileName = temp.m_templateFileName;
-    m_responce = temp.m_responce;
-    m_encoding = temp.m_encoding;
-    m_contentType = temp.m_contentType;
+    responce = temp.responce;
+    encoding = temp.encoding;
+    contentType = temp.contentType;
     m_location = temp.m_location;
     m_cookies = temp.m_cookies;
   }
@@ -1982,9 +1982,9 @@ namespace rweb
     {
       m_html = temp.m_html;
       m_templateFileName = temp.m_templateFileName;
-      m_responce = temp.m_responce;
-      m_encoding = temp.m_encoding;
-      m_contentType = temp.m_contentType;
+      responce = temp.responce;
+      encoding = temp.encoding;
+      contentType = temp.contentType;
       m_location = temp.m_location;
       m_cookies = temp.m_cookies;
     }
@@ -1997,17 +1997,17 @@ namespace rweb
     {
       m_html = temp.m_html;
       m_templateFileName = temp.m_templateFileName;
-      m_responce = temp.m_responce;
-      m_encoding = temp.m_encoding;
-      m_contentType = temp.m_contentType;
+      responce = temp.responce;
+      encoding = temp.encoding;
+      contentType = temp.contentType;
       m_location = temp.m_location;
       m_cookies = temp.m_cookies;
 
       temp.m_html = "";
       temp.m_templateFileName = "";
-      temp.m_responce = HTTP_500; //if server sends empty HTML -> error
-      temp.m_encoding = "";
-      temp.m_contentType = "";
+      temp.responce = HTTP_500; //if server sends empty HTML -> error
+      temp.encoding = "";
+      temp.contentType = "";
       temp.m_location = "";
       temp.m_cookies.clear();
     }
@@ -2018,17 +2018,17 @@ namespace rweb
   {
     m_html = temp.m_html;
     m_templateFileName = temp.m_templateFileName;
-    m_responce = temp.m_responce;
-    m_encoding = temp.m_encoding;
-    m_contentType = temp.m_contentType;
+    responce = temp.responce;
+    encoding = temp.encoding;
+    contentType = temp.contentType;
     m_location = temp.m_location;
     m_cookies = temp.m_cookies;
 
     temp.m_html = "";
     temp.m_templateFileName = "";
-    temp.m_responce = HTTP_500; //if server sends empty HTML -> error
-    temp.m_encoding = "";
-    temp.m_contentType = "";
+    temp.responce = HTTP_500; //if server sends empty HTML -> error
+    temp.encoding = "";
+    temp.contentType = "";
     temp.m_location = "";
     temp.m_cookies.clear();
   }

@@ -42,6 +42,8 @@ namespace rweb
   //---MIME TYPES---
   namespace MIME {
     const std::string octetStream = "application/octet-stream";
+    const std::string JSON = "application/json";
+    const std::string FORMURLENCODED = "application/x-www-form-urlencoded";
 
     const std::string PLAINTEXT = "text/plain";
     const std::string HTML = "text/html";
@@ -57,8 +59,6 @@ namespace rweb
     const std::string BMP = "image/bmp";
     const std::string GIF = "image/gif";
     const std::string WEBP = "image/webp";
-
-    const std::string FORMURLENCODED = "application/x-www-form-urlencoded";
   }
 
   //---HTTP RESPONCES---
@@ -89,7 +89,7 @@ namespace rweb
   std::string replace(const std::string& s, const std::string& from, const std::string& to) noexcept;
   //splits 's' by chars from 'seperator'.
   //'maxsplit' is the maximum count of splits. -1 by default.
-  std::vector<std::string> split(const std::string& s, const std::string& seperator, int maxsplit = -1);
+  std::vector<std::string> split(const std::string& s, const std::string& seperator, int maxsplit = -1, bool trimNeeded=true);
   //does math. Returns 0 on error. 'is_ok' is pointer to bool which is false on an error. if is set does not output errors
   double calculate(const std::string& expression, bool* is_ok=nullptr);
   //colorizes output. Usage: stream << colorize(color) << ... << colorize(NC) << "\n"; /*to clear color*/.
