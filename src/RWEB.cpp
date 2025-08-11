@@ -19,7 +19,7 @@
 #endif
 
 //if defined RWEB will output every request to the console before parsing it
-#define RWEB_DEBUG_OUTPUT_REQUEST
+//#define RWEB_DEBUG_OUTPUT_REQUEST
 
 namespace rweb
 {
