@@ -77,8 +77,13 @@ namespace rweb
   const std::string HTTP_403 = "HTTP/1.1 403 Forbidden\r\n";
   const std::string HTTP_404 = "HTTP/1.1 404 Not Found\r\n";
   const std::string HTTP_405 = "HTTP/1.1 405 Method Not Allowed\r\n";
+  const std::string HTTP_411 = "HTTP/1.1 411 Length Required\r\n";
+  const std::string HTTP_413 = "HTTP/1.1 413 Payload Too Large\r\n";
+  const std::string HTTP_429 = "HTTP/1.1 429 Too Many Requests\r\n";
+  const std::string HTTP_431 = "HTTP/1.1 431 Request Header Fields Too Large\r\n";
 
   const std::string HTTP_500 = "HTTP/1.1 500 Internal Server Error\r\n"; 
+  const std::string HTTP_503 = "HTTP/1.1 503 Service Unavailable\r\n";
 
   //returns string found in file. "" in case of an error.
   //'filePath' is the target file path from resource folder.
