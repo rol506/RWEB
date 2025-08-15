@@ -1972,6 +1972,7 @@ namespace rweb
     responce = temp.responce;
     encoding = temp.encoding;
     contentType = temp.contentType;
+    ignoreHandlers = temp.ignoreHandlers;
     m_location = temp.m_location;
     m_cookies = temp.m_cookies;
   }
@@ -1985,6 +1986,7 @@ namespace rweb
       responce = temp.responce;
       encoding = temp.encoding;
       contentType = temp.contentType;
+      ignoreHandlers = temp.ignoreHandlers;
       m_location = temp.m_location;
       m_cookies = temp.m_cookies;
     }
@@ -2000,6 +2002,7 @@ namespace rweb
       responce = temp.responce;
       encoding = temp.encoding;
       contentType = temp.contentType;
+      ignoreHandlers = temp.ignoreHandlers;
       m_location = temp.m_location;
       m_cookies = temp.m_cookies;
 
@@ -2008,6 +2011,7 @@ namespace rweb
       temp.responce = HTTP_500; //if server sends empty HTML -> error
       temp.encoding = "";
       temp.contentType = "";
+      temp.ignoreHandlers = false;
       temp.m_location = "";
       temp.m_cookies.clear();
     }
@@ -2021,6 +2025,7 @@ namespace rweb
     responce = temp.responce;
     encoding = temp.encoding;
     contentType = temp.contentType;
+    ignoreHandlers = temp.ignoreHandlers;
     m_location = temp.m_location;
     m_cookies = temp.m_cookies;
 
@@ -2029,6 +2034,7 @@ namespace rweb
     temp.responce = HTTP_500; //if server sends empty HTML -> error
     temp.encoding = "";
     temp.contentType = "";
+    temp.ignoreHandlers = false;
     temp.m_location = "";
     temp.m_cookies.clear();
   }

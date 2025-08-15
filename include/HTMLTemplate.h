@@ -45,6 +45,7 @@ namespace rweb
     std::string contentType;
     std::string encoding;
     std::string responce;
+    bool ignoreHandlers = false;
 
   private:
 

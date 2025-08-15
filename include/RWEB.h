@@ -55,7 +55,7 @@ namespace rweb {
   std::optional<HTTPCallback> getRoute(const std::string& path);
   HTMLTemplate redirect(const std::string& location, const std::string& statusResponce=HTTP_303);
   HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
-  HTMLTemplate abort(const std::string& statusResponce);
+  HTMLTemplate abort(const std::string& statusResponce, const bool ignoreHandlers=false);
   void setErrorHandler(const int code, const HTTPCallback callback);
   Session& getSession(const Request& r);
   void clearAllSessions();

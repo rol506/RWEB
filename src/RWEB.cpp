@@ -608,22 +608,25 @@ namespace rweb
 
     if (code[0] != '1' && code[0] != '2' && code[0] != '3')
     {
-      auto it = errorHandlers.find(std::stoi(code));
-      if (it != errorHandlers.end())
+      if (!temp.ignoreHandlers)
       {
-        return handleRequest(it->second, r, temp.getStatusResponce());
-      } else {
-        res = temp.getStatusResponce();
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
-        std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
-
-        if (initialStatus != HTTP_200)
+        auto it = errorHandlers.find(std::stoi(code));
+        if (it != errorHandlers.end())
         {
-          std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+          return handleRequest(it->second, r, temp.getStatusResponce());
         }
-
-        return res;
       }
+
+      res = temp.getStatusResponce();
+      std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
+      std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+
+      if (initialStatus != HTTP_200)
+      {
+        std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+      }
+
+      return res;
     }
 
     std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
@@ -872,10 +875,11 @@ namespace rweb
     return temp;
   }
 
-  HTMLTemplate abort(const std::string& statusResponce)
+  HTMLTemplate abort(const std::string& statusResponce, const bool ignoreHandlers)
   {
     HTMLTemplate temp = "";
     temp.responce = statusResponce;
+    temp.ignoreHandlers = ignoreHandlers;
     return temp;
   }
 

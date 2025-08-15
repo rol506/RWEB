@@ -238,18 +238,24 @@ namespace rweb
 
       if (pos1 == std::string::npos)
       {
-        std::cerr << "[CALC] ERROR FOUND UNOPENED BRACKET: " << pos2 << "\n";
+        if (is_ok)
+          *is_ok = false;
+        else
+          std::cerr << "[CALC] ERROR FOUND UNOPENED BRACKET: " << pos2 << "\n";
         return 0;
       }
 
       if (pos2 == std::string::npos)
       {
-        std::cerr << "[CALC] ERROR FOUND UNCLOSED BRACKET!\n";
+        if (is_ok)
+          *is_ok = false;
+        else
+          std::cerr << "[CALC] ERROR FOUND UNCLOSED BRACKET!\n";
         return 0;
       }
 
       std::string brackets = expr.substr(pos1+1, pos2-pos1-1);
-      double res = calculate(brackets);
+      double res = calculate(brackets, is_ok);
       expr.replace(pos1, pos2-pos1+1, std::to_string(res));
     }
 
