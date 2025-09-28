@@ -13,41 +13,41 @@
 
 namespace rweb {
 
-  //cross-platform wrapper for socket
-  struct SOCKFD
-  {
+//cross-platform wrapper for socket
+struct SOCKFD
+{
 #ifdef __linux__
-    int sockfd;
+  int sockfd;
 #elif _WIN32
-    SOCKET sockfd;
+  SOCKET sockfd;
 #endif
-  };
+};
 
-  class Socket
-  {
-  public: 
-    Socket(int clientQueue);
-    ~Socket();
-    SOCKFD acceptClient();
-    bool sendMessage(SOCKFD clientSocket, const std::string& message);
-    std::string getMessage(SOCKFD clientSocket);
-    static void closeSocket(SOCKFD socket);
+class Socket
+{
+public: 
+  Socket(int clientQueue);
+  ~Socket();
+  SOCKFD acceptClient();
+  bool sendMessage(SOCKFD clientSocket, const std::string& message);
+  std::string getMessage(SOCKFD clientSocket);
+  static void closeSocket(SOCKFD socket);
 
-  private:
+private:
 
 #ifdef __linux__
-    int m_count;
-    sockaddr_in m_serv_addr;
-    hostent* m_server;
+  int m_count;
+  sockaddr_in m_serv_addr;
+  hostent* m_server;
 #elif _WIN32
-    WSADATA m_wsaData;
-    struct addrinfo* m_result, m_hints;
+  WSADATA m_wsaData;
+  struct addrinfo* m_result, m_hints;
 
 #endif
-    bool m_debug;
-    bool m_connected;
-    SOCKFD m_socket;
-  };
+  bool m_debug;
+  bool m_connected;
+  SOCKFD m_socket;
+};
 
 
 }
