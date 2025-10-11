@@ -99,4 +99,8 @@ std::vector<std::string> split(const std::string& s, const std::string& seperato
 double calculate(const std::string& expression, bool* is_ok=nullptr);
 //colorizes output. Usage: stream << colorize(color) << ... << colorize(NC) << "\n"; /*to clear color*/.
 const char *colorize(int font = NC);
+//decodes given URLEncoded string
+std::string urlDecode(const std::string& str);
+//makes given string URLEncoded
+std::string urlEncode(const std::string &value);
 }
