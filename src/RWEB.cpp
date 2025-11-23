@@ -847,7 +847,7 @@ HTMLTemplate createTemplate(const std::string& templatePath, const std::string& 
   }
 
   HTMLTemplate temp(file);
-  temp.contentType = templatePath == "" ? "" : "text/html";
+  temp.contentType = templatePath == "" ? "" : MIME::HTML;
   temp.encoding = templatePath == "" ? "" : "utf-8";
   temp.responce = resp;
   temp.m_templateFileName = templatePath;
@@ -859,6 +859,17 @@ HTMLTemplate abort(const std::string& statusResponce, const bool ignoreHandlers)
   HTMLTemplate temp = "";
   temp.responce = statusResponce;
   temp.ignoreHandlers = ignoreHandlers;
+  return temp;
+}
+
+HTMLTemplate fromJSON(const nlohmann::json& json, const std::string& statusResponce)
+{
+  std::string res = to_string(json);
+  HTMLTemplate temp;
+  temp.m_html = res;
+  temp.contentType = MIME::JSON;
+  temp.encoding = "utf-8";
+  temp.responce = statusResponce;
   return temp;
 }
 

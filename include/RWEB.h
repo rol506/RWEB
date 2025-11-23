@@ -54,8 +54,9 @@ void addResource(const std::string& URLpath, const std::string& resourcePath, co
 void addDynamicResource(const std::string& URLPrefix, const std::string& resourceFolderPrefix, const std::string& contentType);
 std::optional<HTTPCallback> getRoute(const std::string& path);
 HTMLTemplate redirect(const std::string& location, const std::string& statusResponce=HTTP_303);
-HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce);
+HTMLTemplate createTemplate(const std::string& templatePath, const std::string& statusResponce=HTTP_200);
 HTMLTemplate abort(const std::string& statusResponce, const bool ignoreHandlers=false);
+HTMLTemplate fromJSON(const nlohmann::json& json, const std::string& statusResponce=HTTP_200);
 void setErrorHandler(const int code, const HTTPCallback callback);
 Session& getSession(const Request& r);
 void clearAllSessions();

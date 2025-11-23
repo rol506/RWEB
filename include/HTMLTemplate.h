@@ -64,5 +64,6 @@ private:
   friend HTMLTemplate createTemplate(const std::string&, const std::string&);
   friend HTMLTemplate redirect(const std::string&, const std::string&);
   friend HTMLTemplate abort(const std::string& statusResponce);
+  friend HTMLTemplate fromJSON(const nlohmann::json& json, const std::string& statusResponce);
 };
 }
