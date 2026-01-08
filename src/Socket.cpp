@@ -50,7 +50,7 @@ Socket::Socket(int clientQueue)
 
   // EXPERIMENTAL: set timeout for "Connection: keep-alive"
   struct timeval tv;
-  tv.tv_sec = 2;
+  tv.tv_sec = 20;
   tv.tv_usec = 0;
   if (setsockopt(m_socket.sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
   {
