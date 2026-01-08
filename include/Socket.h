@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <optional>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -28,7 +29,7 @@ class Socket
 public: 
   Socket(int clientQueue);
   ~Socket();
-  SOCKFD acceptClient();
+  std::optional<SOCKFD> acceptClient();
   bool sendMessage(SOCKFD clientSocket, const std::string& message);
   std::string getMessage(SOCKFD clientSocket);
   static void closeSocket(SOCKFD socket);

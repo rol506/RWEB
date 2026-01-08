@@ -1,4 +1,3 @@
-#include "Utility.h"
 #include <iostream>
 #include <cstdlib>
 
@@ -33,7 +32,7 @@ int main()
   rweb::setErrorHandler(404, [](const rweb::Request r){return rweb::redirect("/index");});
   rweb::setErrorHandler(401, &homePage);
 
-  rweb::addResource("/style.css", "style.css", "text/css");
+  rweb::addResource("/style.css", "style.css", rweb::MIME::CSS);
 
   std::cout << "----------SERVER CONFIG----------\n";
   std::cout << "Debug: " << (rweb::getDebugState() ? "ENABLED" : "DISABLED") << "\n";

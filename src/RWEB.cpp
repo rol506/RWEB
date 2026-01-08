@@ -108,6 +108,8 @@ std::string describeError()
   {
     case 0:
       return "Success";
+    case 4:
+      return "Interrupted system call";
     case 9:
       return "Bad file descriptor";
     case 13:
@@ -145,7 +147,7 @@ static const Request parseRequest(const std::string request)
   Request r;
   std::string str = request;
 #ifdef RWEB_DEBUG_OUTPUT_REQUEST
-  std::cout << request << "\n";
+  std::cout << "request:\n" << request << "\nrequest end\n";
 #endif
   std::size_t pos;
 
@@ -754,13 +756,29 @@ bool startServer(const int clientQueue)
 
   while (!getShouldClose())
   {
-    SOCKFD newSock = serverSocket->acceptClient();
+    std::optional<SOCKFD> newSockOpt = serverSocket->acceptClient();
+    if (!newSockOpt)
+    {
+      if (errno != 11 && (errno != 4 && getShouldClose()))
+      {
+        std::cerr << colorize(RED) << "[ERROR] accept failed: " << describeError() << colorize(NC) << "\n";
+      }
+      continue;
+    }
+
+    SOCKFD newSock = *newSockOpt;
 
     if (getShouldClose())
     {
       break;
     }
-    std::string request = serverSocket->getMessage(newSock);
+    std::string request = trim(serverSocket->getMessage(newSock));
+    if (request.empty())
+    {
+      std::cerr << colorize(YELLOW) << "[WARNING] Skipping empty request!" << colorize(NC) << "\n";
+      Socket::closeSocket(newSock);
+      continue;
+    }
 
     Request req = parseRequest(request);
 

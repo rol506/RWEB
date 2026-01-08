@@ -1,4 +1,5 @@
 #include "../include/Socket.h"
+#include "../include/Utility.h"
 
 #include <iostream>
 
@@ -32,7 +33,8 @@ Socket::Socket(int clientQueue)
   m_socket.sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (m_socket.sockfd < 0)
   {
-    std::cerr << "[ERROR] Can't open socket!\n";
+    std::cerr << colorize(RED) << "[ERROR] Can't open socket!" << colorize(NC) << "\n";
+    close(m_socket.sockfd);
     setShouldClose(true);
     return;
   }
@@ -40,7 +42,20 @@ Socket::Socket(int clientQueue)
   const int enable = 1;
   if (setsockopt(m_socket.sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
   {
-    std::cerr << "[ERROR] setsockopt failed! (SO_REUSEADDR)\n";
+    std::cerr << colorize(RED) << "[ERROR] setsockopt failed! (SO_REUSEADDR)" << colorize(NC) << "\n";
+    close(m_socket.sockfd);
+    setShouldClose(true);
+    return;
+  }
+
+  // EXPERIMENTAL: set timeout for "Connection: keep-alive"
+  struct timeval tv;
+  tv.tv_sec = 2;
+  tv.tv_usec = 0;
+  if (setsockopt(m_socket.sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
+  {
+    std::cerr << colorize(RED) << "[ERROR] setsockopt failed! (SO_RCVTIMEO)" << colorize(NC) << "\n";
+    close(m_socket.sockfd);
     setShouldClose(true);
     return;
   }
@@ -53,7 +68,7 @@ Socket::Socket(int clientQueue)
 
   if (bind(m_socket.sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
   {
-    std::cerr << "[ERROR] Failed to bind socket: " << describeError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] Failed to bind socket: " << describeError() << colorize(NC) << "\n";
     close(m_socket.sockfd);
     setShouldClose(true);
     return;
@@ -70,8 +85,8 @@ Socket::Socket(int clientQueue)
   int iResult = WSAStartup(MAKEWORD(2, 2), &m_wsaData);
   if (iResult != 0)
   {
-    std::cerr << "[ERROR] WSAStartup failed with error: " << iResult << "\n";
-    std::cerr << "[ERROR] Can't open socket!\n";
+    std::cerr << colorize(RED) << "[ERROR] WSAStartup failed with error: " << iResult << "\n";
+    std::cerr << "[ERROR] Can't open socket!" << colorize(NC) << "\n";
     setShouldClose(true);
   }
 
@@ -83,7 +98,7 @@ Socket::Socket(int clientQueue)
   // Resolve the server address and port
   iResult = getaddrinfo(NULL, std::to_string(getPort()).c_str(), &m_hints, &m_result);
   if ( iResult != 0 ) {
-    std::cerr << "[ERROR] getaddrinfo failed with error: " << iResult << "\n";
+    std::cerr << colorize(RED) << "[ERROR] getaddrinfo failed with error: " << iResult << colorize(NC) << "\n";
     WSACleanup();
     setShouldClose(true);
     return;
@@ -92,7 +107,7 @@ Socket::Socket(int clientQueue)
   // Create a SOCKET for the server to listen for client connections.
   m_socket.sockfd = socket(m_result->ai_family, m_result->ai_socktype, m_result->ai_protocol);
   if (m_socket.sockfd == INVALID_SOCKET) {
-    std::cerr << "[ERROR] socket failed with error: " << WSAGetLastError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] socket failed with error: " << WSAGetLastError() << colorize(NC) << "\n";
     freeaddrinfo(m_result);
     WSACleanup();
     setShouldClose(true);
@@ -102,7 +117,7 @@ Socket::Socket(int clientQueue)
   // Setup the TCP listening socket
   iResult = bind( m_socket.sockfd, m_result->ai_addr, (int)m_result->ai_addrlen);
   if (iResult == SOCKET_ERROR) {
-    std::cerr << "[ERROR] bind failed with error: " << WSAGetLastError() << "\n";
+    std::cerr << colorize(RED) "[ERROR] bind failed with error: " << WSAGetLastError() << colorize(NC) << "\n";
     freeaddrinfo(m_result);
     closesocket(m_socket.sockfd);
     WSACleanup();
@@ -114,7 +129,7 @@ Socket::Socket(int clientQueue)
 
   iResult = listen(m_socket.sockfd, clientQueue);
   if (iResult == SOCKET_ERROR) {
-    std::cerr << "[ERROR] listen failed with error: " << WSAGetLastError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] listen failed with error: " << WSAGetLastError() << colorize(NC) << "\n";
     closesocket(m_socket.sockfd);
     WSACleanup();
     setShouldClose(true);
@@ -149,12 +164,12 @@ Socket::~Socket()
 
   if (shutdown(m_socket.sockfd, 0) && errno != ENOTCONN)
   {
-    std::cerr << "[ERROR] Failed to shutdown server socket: " << describeError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] Failed to shutdown server socket: " << describeError() << colorize(NC) << "\n";
     err = true;
   }
   if (::close(m_socket.sockfd))
   {
-    std::cerr << "[ERROR] Failed to close server socket: " << describeError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] Failed to close server socket: " << describeError() << colorize(NC) << "\n";
     err = true;
   }
 
@@ -162,7 +177,7 @@ Socket::~Socket()
   {
     std::cout << "[SERVER] Socket was shut down successfully!\n";
   } else {
-    std::cerr << "[ERROR] Failed to shutdown socket!\n";
+    std::cerr << colorize(RED) << "[ERROR] Failed to shutdown socket!" << colorize(NC) << "\n";
   }
 
 #elif _WIN32
@@ -180,7 +195,7 @@ bool Socket::sendMessage(SOCKFD clientSocket, const std::string& message)
   if (m_count < 0)
   {
     if (m_debug)
-      std::cerr << "[ERROR] Failed to write to socket!\n";
+      std::cerr << colorize(RED) << "[ERROR] Failed to write to socket!" << colorize(NC) << "\n";
     return false;
   }
 
@@ -190,7 +205,7 @@ bool Socket::sendMessage(SOCKFD clientSocket, const std::string& message)
   int iResult = send(clientSocket.sockfd, message.c_str(), message.size(), 0);
   if (iResult == SOCKET_ERROR)
   {
-    std::cerr << "[ERROR] send failed: " << WSAGetLastError() << "\n";
+    std::cerr << colorize(RED) << "[ERROR] send failed: " << WSAGetLastError() << colorize(NC) << "\n";
     return false;
   }
 
@@ -199,6 +214,7 @@ bool Socket::sendMessage(SOCKFD clientSocket, const std::string& message)
 #endif
 }
 
+// returns empty string on error
 std::string Socket::getMessage(SOCKFD clientSocket)
 {
 
@@ -215,8 +231,20 @@ std::string Socket::getMessage(SOCKFD clientSocket)
       if (getShouldClose())
         return request;
 
-      std::cerr << "[ERROR] Failed to read from client socket: " << describeError() << "\n";
-      return request;
+      if (errno == 11)
+      {
+        if (request.empty())
+        {
+          std::cout << colorize(YELLOW) << "[WARNING] Connection timed out!" << colorize(NC) << "\n";
+          return std::string{};
+        } else {
+          std::cerr << colorize(RED) << "[ERROR] Server was unable to get full request because connection timed out!" << colorize(NC) << "\n";
+          return std::string{};
+        }
+      }
+
+      std::cerr << colorize(RED) << "[ERROR] Failed to read from client socket: " << describeError() << colorize(NC) << "\n";
+      return std::string{};
     }
     if (n == 0 || request.find("\r\n\r\n") != std::string::npos)
     {
@@ -245,7 +273,7 @@ std::string Socket::getMessage(SOCKFD clientSocket)
       break;
     } else if (iResult < 0)
     {
-      std::cerr << "[ERROR] recv failed: " << WSAGetLastError() << "\n";
+      std::cerr << colorize(RED) << "[ERROR] recv failed: " << WSAGetLastError() << colorize(NC) << "\n";
     }
   } while (iResult > 0);
 
@@ -254,7 +282,7 @@ std::string Socket::getMessage(SOCKFD clientSocket)
 #endif
 }
 
-SOCKFD Socket::acceptClient()
+std::optional<SOCKFD> Socket::acceptClient()
 {
 #ifdef __linux__
 
@@ -262,8 +290,12 @@ SOCKFD Socket::acceptClient()
 
   socklen_t cli_len = sizeof(cli_addr);
   int newsockfd = ::accept(m_socket.sockfd, (struct sockaddr*)&cli_addr, &cli_len);
+  if (newsockfd < 0)
+  {
+    return std::nullopt;
+  }
 
-  return {newsockfd};
+  return SOCKFD{newsockfd};
 
 #elif _WIN32
 
