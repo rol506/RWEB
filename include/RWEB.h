@@ -26,12 +26,13 @@ struct Request
   std::string method;
   std::string path;
   std::string protocol;
-  std::string headers;
+  std::map<std::string, std::string> headers;
   std::string contentType;
   std::map<std::string, std::string> body;
   std::map<std::string, std::string> cookies;
   std::vector<std::string> args;
   bool isValid = false;
+  bool keepAlive = false;
 }; 
 
 typedef HTMLTemplate (*HTTPCallback)(const Request r);
@@ -64,7 +65,7 @@ void clearAllSessions();
 //returns false on error.
 bool init(bool debug = false, unsigned int level=0);
 //returns false on an error.
-bool startServer(const int clientQueue);
+bool startServer(const int clientQueue, const int timeoutSeconds=20);
 #ifdef __linux__
 void closeServer(int arg=0);
 #elif _WIN32

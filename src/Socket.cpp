@@ -21,8 +21,8 @@ bool getShouldClose();
 void setShouldClose(bool _shouldClose);
 std::string describeError();
 
-Socket::Socket(int clientQueue)
-: m_debug(false), m_connected(false)
+Socket::Socket(int clientQueue, int timeoutSeconds)
+: m_debug(false), m_connected(false), timeout(timeoutSeconds)
 {
 #ifdef __linux__
 
@@ -48,9 +48,8 @@ Socket::Socket(int clientQueue)
     return;
   }
 
-  // EXPERIMENTAL: set timeout for "Connection: keep-alive"
   struct timeval tv;
-  tv.tv_sec = 20;
+  tv.tv_sec = timeoutSeconds;
   tv.tv_usec = 0;
   if (setsockopt(m_socket.sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
   {
@@ -142,6 +141,8 @@ void Socket::closeSocket(SOCKFD socket)
 {
 #ifdef __linux__
 
+  if (Debug::showConnectionLifetime)
+    std::cout << "[DEBUG] Closed connection: " << socket.sockfd << "\n";
   shutdown(socket.sockfd, SHUT_RDWR);
   close(socket.sockfd);
 
@@ -164,20 +165,24 @@ Socket::~Socket()
 
   if (shutdown(m_socket.sockfd, 0) && errno != ENOTCONN)
   {
-    std::cerr << colorize(RED) << "[ERROR] Failed to shutdown server socket: " << describeError() << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[ERROR] Failed to shutdown server socket: " << describeError() << colorize(NC) << "\n";
     err = true;
   }
   if (::close(m_socket.sockfd))
   {
-    std::cerr << colorize(RED) << "[ERROR] Failed to close server socket: " << describeError() << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[ERROR] Failed to close server socket: " << describeError() << colorize(NC) << "\n";
     err = true;
   }
 
   if (!err)
   {
-    std::cout << "[SERVER] Socket was shut down successfully!\n";
+    if (getLogLevel() <= INFO)
+      std::cout << "[SERVER] Socket was shut down successfully!\n";
   } else {
-    std::cerr << colorize(RED) << "[ERROR] Failed to shutdown socket!" << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[ERROR] Failed to shutdown socket!" << colorize(NC) << "\n";
   }
 
 #elif _WIN32
@@ -191,13 +196,20 @@ Socket::~Socket()
 bool Socket::sendMessage(SOCKFD clientSocket, const std::string& message)
 {
 #ifdef __linux__
-  m_count = write(clientSocket.sockfd, message.c_str(), message.size());
-  if (m_count < 0)
+  m_count = 0;
+
+  do
   {
-    if (m_debug)
-      std::cerr << colorize(RED) << "[ERROR] Failed to write to socket!" << colorize(NC) << "\n";
-    return false;
-  }
+    int n = write(clientSocket.sockfd, message.substr(m_count).c_str(), message.size() - m_count);
+    if (n < 0)
+    {
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[ERROR] Failed to write to socket: " << describeError() << colorize(NC) << "\n";
+      return false;
+    }
+    m_count += n;
+  } while (m_count < message.size());
+  //std::cout << "[DEBUG] Sent " << m_count << " bytes\n";
 
   return true;
 #elif _WIN32
@@ -223,27 +235,22 @@ std::string Socket::getMessage(SOCKFD clientSocket)
 
   std::string request(SERVER_BUFLEN, '\0');
   do {
-    int n = read(clientSocket.sockfd, &request[0], SERVER_BUFLEN-1);
+    int n = read(clientSocket.sockfd, &request[received], SERVER_BUFLEN-1);
     if (n < 0)
     {
-      shutdown(clientSocket.sockfd, SHUT_RDWR);
-      close(clientSocket.sockfd);
+      closeSocket(clientSocket);
       if (getShouldClose())
         return request;
 
       if (errno == 11)
       {
-        if (request.empty())
-        {
+        if (getLogLevel() <= WARNING)
           std::cout << colorize(YELLOW) << "[WARNING] Connection timed out!" << colorize(NC) << "\n";
-          return std::string{};
-        } else {
-          std::cerr << colorize(RED) << "[ERROR] Server was unable to get full request because connection timed out!" << colorize(NC) << "\n";
-          return std::string{};
-        }
+        return std::string{};
       }
 
-      std::cerr << colorize(RED) << "[ERROR] Failed to read from client socket: " << describeError() << colorize(NC) << "\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[ERROR] Failed to read from client socket: " << describeError() << colorize(NC) << "\n";
       return std::string{};
     }
     if (n == 0 || request.find("\r\n\r\n") != std::string::npos)
@@ -295,6 +302,8 @@ std::optional<SOCKFD> Socket::acceptClient()
     return std::nullopt;
   }
 
+  if (Debug::showConnectionLifetime)
+    std::cout << "[DEBUG] Opened connection: " << newsockfd << "\n";
   return SOCKFD{newsockfd};
 
 #elif _WIN32

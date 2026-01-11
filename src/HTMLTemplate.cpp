@@ -88,15 +88,18 @@ static const inline std::string stringifyJson(const nlohmann::json& json)
 {
   if (json.is_null())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify empty json!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify empty json!" << colorize(NC) << "\n";
     return "";
   } else if (json.is_array())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json array!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json array!" << colorize(NC) << "\n";
     return "";
   } else if (json.is_object())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json object!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json object!" << colorize(NC) << "\n";
     return "";
   } else if (json.is_string())
   {
@@ -107,7 +110,8 @@ static const inline std::string stringifyJson(const nlohmann::json& json)
     ss << json;
     return ss.str();
   } else {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
     return "";
   }
 }
@@ -116,15 +120,18 @@ static const inline std::string stringifyJson(const nlohmann::json::const_iterat
 {
   if (json->is_null())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify empty json!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify empty json!" << colorize(NC) << "\n";
     return "";
   } else if (json->is_array())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json array!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json array!" << colorize(NC) << "\n";
     return "";
   } else if (json->is_object())
   {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json object!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify json object!" << colorize(NC) << "\n";
     return "";
   } else if (json->is_string())
   {
@@ -135,7 +142,8 @@ static const inline std::string stringifyJson(const nlohmann::json::const_iterat
     ss << *json;
     return ss.str();
   } else {
-    std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
+    if (getLogLevel() <= WARNING)
+      std::cerr << colorize(YELLOW) << "[TEMPLATE] Cannot stringify unsupported type json!" << colorize(NC) << "\n";
     return "";
   } 
 }
@@ -160,7 +168,8 @@ static const std::optional<nlohmann::json> getJson(const nlohmann::json& root, c
     {
       leaf = &leaf->at(name);
     } else {
-      std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the attribute \"" << name << "\"!" << colorize(NC) << "\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the attribute \"" << name << "\"!" << colorize(NC) << "\n";
       return std::nullopt;
     }
   }
@@ -194,7 +203,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       ++token;
       if (token == input.end())
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -205,7 +215,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         token++;
         if (token == input.end())
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -217,7 +228,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             token++;
             if (token == input.end())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
               return std::nullopt;
             }
 
@@ -232,7 +244,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             token++;
             if (token == input.end())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
               return std::nullopt;
             } 
 
@@ -279,7 +292,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         val = token->second;
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected token " << typeToString(token->first) << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected token " << typeToString(token->first) << colorize(NC) << "\n";
         return std::nullopt;
       }
     }
@@ -291,7 +305,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     {
       if (token->first != IF_BODY)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the IF_BODY token!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the IF_BODY token!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -335,7 +350,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         result = static_cast<int>(val) != 0;
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Cannot check unsupported type json!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Cannot check unsupported type json!" << colorize(NC) << "\n";
         return std::nullopt;
       }
     }
@@ -359,7 +375,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     {
       if (token == input.end())
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -376,7 +393,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         token++;
         if (token == input.end())
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -388,7 +406,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             token++;
             if (token == input.end())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
               return std::nullopt;
             }
 
@@ -403,7 +422,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             token++;
             if (token == input.end())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
               return std::nullopt;
             } 
 
@@ -416,13 +436,16 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
           auto r = getJson(json, attributes);
           if (!r)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
-
-            for (int it = 1; it < attributes.size(); ++it)
+            if (getLogLevel() <= ERROR)
             {
-              std::cerr << "." << attributes[it];
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
+
+              for (int it = 1; it < attributes.size(); ++it)
+              {
+                std::cerr << "." << attributes[it];
+              }
+              std::cerr << colorize(NC) << "\n";
             }
-            std::cerr << colorize(NC) << "\n";
             return std::nullopt;
           }
 
@@ -444,7 +467,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             val = *ptr;
             lv += stringifyJson(val);
           } else {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
             return std::nullopt;
           }
         }
@@ -457,7 +481,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         op = token->second;
         break;
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Unexpected token " << typeToString(token->first) << " in the IF statement!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Unexpected token " << typeToString(token->first) << " in the IF statement!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -471,7 +496,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         if (token == input.end())
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -488,7 +514,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
           token++;
           if (token == input.end())
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
             return std::nullopt;
           }
 
@@ -500,7 +527,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
               token++;
               if (token == input.end())
               {
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+                if (getLogLevel() <= ERROR)
+                  std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
                 return std::nullopt;
               }
 
@@ -515,7 +543,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
               token++;
               if (token == input.end())
               {
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
+                if (getLogLevel() <= ERROR)
+                  std::cerr << colorize(RED) << "[TEMPLATE] Error! Unexpected end of input in the IF statement!" << colorize(NC) << "\n";
                 return std::nullopt;
               } 
 
@@ -528,12 +557,15 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             auto r = getJson(json, attributes);
             if (!r)
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
-              for (int it = 1; it < attributes.size(); ++it)
+              if (getLogLevel() <= ERROR)
               {
-                std::cerr << "." << attributes[it];
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name;
+                for (int it = 1; it < attributes.size(); ++it)
+                {
+                  std::cerr << "." << attributes[it];
+                }
+                std::cerr << colorize(NC) << "\n";
               }
-              std::cerr << colorize(NC) << "\n";
               return std::nullopt;
             }
 
@@ -551,7 +583,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
               val = *ptr;
               rv += stringifyJson(val);
             } else {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
               return std::nullopt;
             }
           }
@@ -563,7 +596,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         {
           break;
         } else {
-          std::cerr << colorize(RED) << "[TEMPLATE] Unexpected token " << typeToString(token->first) << " in the IF statement!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Unexpected token " << typeToString(token->first) << " in the IF statement!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -575,7 +609,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     {
       if (token->first != IF_BODY)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the IF_BODY token!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the IF_BODY token!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -661,7 +696,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         result = !lv.empty();
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Something went wrong! Unknown operator in IF statemnt: " << op << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Something went wrong! Unknown operator in IF statemnt: " << op << colorize(NC) << "\n";
         return std::nullopt;
       }
     } else {
@@ -681,7 +717,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         result = l_res;
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Something went wrong! Unknown operator in IF statement: " << op << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Something went wrong! Unknown operator in IF statement: " << op << colorize(NC) << "\n";
         return std::nullopt;
       }
     }
@@ -695,11 +732,13 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
 
   } else if (input.begin()->first == ELSE)
   {
-    std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ELSE before IF!" << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ELSE before IF!" << colorize(NC) << "\n";
     return std::nullopt;
   } else if (input.begin()->first == ENDIF)
   {
-    std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ENDIF before IF!" << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ENDIF before IF!" << colorize(NC) << "\n";
     return std::nullopt;
   } else if (input.begin()->first == FOR)
   {
@@ -709,7 +748,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
 
     if (token->first != VARIABLE)
     {
-      std::cerr << colorize(RED) << "[TEMPLATE] Error! For loop must start with variable declaration!" << colorize(NC) << "\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[TEMPLATE] Error! For loop must start with variable declaration!" << colorize(NC) << "\n";
       return std::nullopt;
     }
 
@@ -728,14 +768,16 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
 
     if (token->first != KEYWORD && token->second != "in")
     {
-      std::cerr << colorize(RED) << "[TEMPLATE] Error! \"in\" keyword must separate variables and iterator!" << colorize(NC) << "\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[TEMPLATE] Error! \"in\" keyword must separate variables and iterator!" << colorize(NC) << "\n";
       return std::nullopt;
     }
     token++;
 
     if (token->first != ITERATOR && token->first != VARIABLE)
     {
-      std::cerr << colorize(RED) << "[TEMPLATE] Error! An iterator or a variable must be present after \"in\" keyword!" << colorize(NC) << "\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << colorize(RED) << "[TEMPLATE] Error! An iterator or a variable must be present after \"in\" keyword!" << colorize(NC) << "\n";
       return std::nullopt;
     }
 
@@ -744,22 +786,25 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     {
       if (token->first == VARIABLE)
       {
-        std::cout << colorize(YELLOW) << "[TEMPLATE] Warning! Do not use 'enumerate' as a variable name, it is an iterator function name!"
-          << colorize(NC) << "\n";
+        if (getLogLevel() <= WARNING)
+          std::cout << colorize(YELLOW) << "[TEMPLATE] Warning! Do not use 'enumerate' as a variable name, it is an iterator function name!"
+            << colorize(NC) << "\n";
       }
 
       if (variables.size() != 2)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" has 2 return values! " << variables.size() << " provided!"
-          << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" has 2 return values! " << variables.size() << " provided!"
+            << colorize(NC) << "\n";
         return std::nullopt;
       }
 
       token++;
       if (token->first != ARGUMENT)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" takes 1 positional argument! Less than 1 provided!"
-          << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" takes 1 positional argument! Less than 1 provided!"
+            << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -768,14 +813,16 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       token++;
       if (token->first == ARGUMENT)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" takes only 1 positional argument! More than 1 provided!"
-          << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! \"enumerate\" takes only 1 positional argument! More than 1 provided!"
+            << colorize(NC) << "\n";
         return std::nullopt;
       }
 
       if (token->first != FOR_BODY)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the FOR_BODY token!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the FOR_BODY token!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -805,7 +852,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
       {
         if (!val.is_array())
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Error! Iteration using \"enumerate\" supports only json arrays!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Iteration using \"enumerate\" supports only json arrays!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -838,7 +886,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         }
 
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the json array \"" << argName << "\"!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the json array \"" << argName << "\"!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -846,21 +895,24 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     {
       if (variables.size() != 1 && variables.size() != 2)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages uses exactly 1 or 2 variables! " << variables.size() << " provided!" 
-          << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages uses exactly 1 or 2 variables! " << variables.size() << " provided!" 
+            << colorize(NC) << "\n";
         return std::nullopt;
       }
 
       token++;
       if (token->first == ARGUMENT)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages does not require any arguments!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! get_flashed_messages does not require any arguments!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
       if (token->first != FOR_BODY)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find FOR_BODY token!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find FOR_BODY token!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -896,7 +948,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     } else {
       if (variables.size() > 1)
       {
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Array iteration uses exactly 1 argument! More than 1 provided!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Array iteration uses exactly 1 argument! More than 1 provided!" << colorize(NC) << "\n";
         return std::nullopt;
       }
 
@@ -925,14 +978,16 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
 
         if (!val.is_array())
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Error! Iteration supports only json arrays! Provided object is not an array!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Error! Iteration supports only json arrays! Provided object is not an array!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
         ++token;
         if (token == input.end() || token->first != FOR_BODY)
         {
-          std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the FOR_BODY token!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the FOR_BODY token!" << colorize(NC) << "\n";
           return std::nullopt;
         }
 
@@ -954,7 +1009,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
           result += trim(tmp);
         }
       } else {
-        std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the json array \"" << token->second << "\"!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the json array \"" << token->second << "\"!" << colorize(NC) << "\n";
         return std::nullopt;
       }
     }
@@ -962,7 +1018,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     return result;
   } else if (input.begin()->first == ENDFOR)
   {
-    std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ENDFOR before FOR!" << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized token ENDFOR before FOR!" << colorize(NC) << "\n";
     return std::nullopt;
   } else {
     //flags
@@ -973,7 +1030,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
     for (auto token = input.begin(); token != input.end(); ++token)
     {
       if (token->first == SUBSCRIPT){
-        std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized subscript token in variable!" << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[TEMPLATE] Error! Unrecognized subscript token in variable!" << colorize(NC) << "\n";
         return std::nullopt;
       } else if (token->first == FLAG)
       {
@@ -984,7 +1042,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         {
           safeFlag = true;
         } else {
-          std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
         }
       } else if (token->first == VARIABLE)
       {
@@ -1018,7 +1077,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
               {
                 safeFlag = true;
               } else {
-                std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
+                if (getLogLevel() <= WARNING)
+                  std::cerr << colorize(YELLOW) << "[TEMPLATE] Warning! Ignoring unknown flag \"" << token->second << "\"!" << colorize(NC) << "\n";
               }
             } else {
               break;
@@ -1028,7 +1088,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
           auto val = getJson(json, attributes);
           if (!val)
           {
-            std::cout << colorize(RED) << "[TEMPLATE] Failed to process attributes: " << colorize(NC) << attributes[0];
+            if (getLogLevel() <= ERROR)
+              std::cout << colorize(RED) << "[TEMPLATE] Failed to process attributes: " << colorize(NC) << attributes[0];
             for (auto it = attributes.begin()+1; it!= attributes.end();++it)
             {
               std::cout << "." << *it;
@@ -1044,7 +1105,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
             expression += stringifyJson(json.at(token->second));
           } catch (const nlohmann::detail::out_of_range& e)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
             return std::nullopt;
           }
         }
@@ -1055,7 +1117,8 @@ static const std::optional<std::string> parser_eval(HTMLTemplate* templ, std::ve
         {
           expression += stringifyJson(*ptr);
         } else {
-          std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[TEMPLATE] Cannot find the \"" << token->second << "\"!" << colorize(NC) << "\n";
           return std::nullopt;
         }
       }
@@ -1131,22 +1194,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           pos = code.find("{%", pos);
           if (pos == std::string::npos || pos >= code.size())
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, end);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, end);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
           pos2 = code.find("%}", pos);
           if (pos2 == std::string::npos || pos >= code.size())
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, end);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find {% endraw %}!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, end);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
@@ -1258,11 +1327,14 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
                 std::size_t strEnd = cond.find('"', j+1);
                 if (strEnd == std::string::npos)
                 {
-                  std::cerr << colorize(RED) << "[TEMPLATE] Error! Failed to parse string! Cannot find string end!" << colorize(NC) << "\n";
-                  const std::string filename = templ->getFileName();
-                  const std::string code = getFileString(filename);
-                  int cnt = getCurrentLine(code, i);
-                  std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+                  if (getLogLevel() <= ERROR)
+                  {     
+                    std::cerr << colorize(RED) << "[TEMPLATE] Error! Failed to parse string! Cannot find string end!" << colorize(NC) << "\n";
+                    const std::string filename = templ->getFileName();
+                    const std::string code = getFileString(filename);
+                    int cnt = getCurrentLine(code, i);
+                    std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+                  }
                   return false;
                 }
 
@@ -1314,22 +1386,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
             std::size_t pos1 = code.find("{%", i);
             if (pos1 == std::string::npos || i >= code.size())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
-              const std::string filename = templ->getFileName();
-              const std::string code = getFileString(filename);
-              int cnt = getCurrentLine(code, i);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
             std::size_t pos2 = code.find("%}", pos1+2);
             if (pos1 == std::string::npos || i >= code.size())
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
-              const std::string filename = templ->getFileName();
-              const std::string code = getFileString(filename);
-              int cnt = getCurrentLine(code, i);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDIF!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
@@ -1426,11 +1504,14 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
                       std::size_t pos2 = iterator.find(")");
                       if (!found && pos2 != std::string::npos)
                       {
-                        std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!" << colorize(NC) << "\n";
-                        const std::string filename = templ->getFileName();
-                        const std::string code = getFileString(filename);
-                        int cnt = getCurrentLine(code, i);
-                        std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+                        if (getLogLevel() <= ERROR)
+                        {
+                          std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!" << colorize(NC) << "\n";
+                          const std::string filename = templ->getFileName();
+                          const std::string code = getFileString(filename);
+                          int cnt = getCurrentLine(code, i);
+                          std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+                        }
                         return false;
                       }
 
@@ -1481,9 +1562,9 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
                   {
                     tokens.emplace_back(KEYWORD, "in");
                     variablesProcessed = true;
-                  } else
-                  tokens.emplace_back(VARIABLE, trim(tmp));
-                  tmp = cond[j];
+                  } else 
+                      tokens.emplace_back(VARIABLE, trim(tmp));
+                    tmp = cond[j];
                 } else if ( (isdigit(*tmp.rbegin()) || *tmp.rbegin() == '.' || *tmp.rbegin() == '-') && !(isdigit(cond[j]) || cond[j] == '.' || cond[j] == '-'))
                 {
                   tokens.emplace_back(MATH, trim(tmp));
@@ -1515,11 +1596,14 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
                     std::size_t pos2 = iterator.find(")");
                     if (!found && pos2 != std::string::npos)
                     {
-                      std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!\n" << "  " << iterator << colorize(NC) << "\n";
-                      const std::string filename = templ->getFileName();
-                      const std::string code = getFileString(filename);
-                      int cnt = getCurrentLine(code, i);
-                      std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+                      if (getLogLevel() <= ERROR)
+                      {
+                        std::cerr << colorize(RED) << "[TEMPLATE] Error! Argument list must be started with '('!\n" << "  " << iterator << colorize(NC) << "\n";
+                        const std::string filename = templ->getFileName();
+                        const std::string code = getFileString(filename);
+                        int cnt = getCurrentLine(code, i);
+                        std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+                      }
                       return false;
                     }
 
@@ -1559,22 +1643,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
               std::size_t pos1 = code.find("{%", i);
               if (pos1 == std::string::npos || i >= code.size())
               {
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
-                const std::string filename = templ->getFileName();
-                const std::string code = getFileString(filename);
-                int cnt = getCurrentLine(code, i);
-                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+                if (getLogLevel() <= ERROR)
+                {
+                  std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
+                  const std::string filename = templ->getFileName();
+                  const std::string code = getFileString(filename);
+                  int cnt = getCurrentLine(code, i);
+                  std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+                }
                 return false;
               }
 
               std::size_t pos2 = code.find("%}", pos1+2);
               if (pos1 == std::string::npos || i >= code.size())
               {
-                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
-                const std::string filename = templ->getFileName();
-                const std::string code = getFileString(filename);
-                int cnt = getCurrentLine(code, i);
-                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+                if (getLogLevel() <= ERROR)
+                {
+                  std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find ENDFOR!" << colorize(NC) << "\n";
+                  const std::string filename = templ->getFileName();
+                  const std::string code = getFileString(filename);
+                  int cnt = getCurrentLine(code, i);
+                  std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+                }
                 return false;
               }
 
@@ -1631,22 +1721,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           std::size_t bracketStart = trimmed.find_first_of("(");
           if (bracketStart == std::string::npos)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
           std::size_t bracketEnd = trimmed.find_first_of(")", bracketStart+1);
           if (bracketEnd == std::string::npos)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
@@ -1654,22 +1750,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           bracketStart = substr.find_first_of("\""); //reuse variable
           if (bracketStart == std::string::npos)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
           bracketEnd = substr.find_first_of("\"", bracketStart+1); //reuse variable
           if (bracketEnd == std::string::npos)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
@@ -1678,11 +1780,14 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           std::size_t nameStart = substr.find_first_of(",", bracketEnd+1);
           if (nameStart == std::string::npos)
           {
-            std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i);
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              std::cerr << colorize(RED) << "[TEMPLATE] Error! Invalid \"loadblock\" syntax!" << colorize(NC) << "\n";
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i);
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
 
@@ -1696,22 +1801,28 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
             blockStart = file.find("{%", blockStartEnd+2);
             if (blockStart == std::string::npos)
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
-              const std::string filename = templ->getFileName();
-              const std::string code = getFileString(filename);
-              int cnt = getCurrentLine(code, i);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
             blockStartEnd = file.find("%}", blockStart+2);
             if (blockStartEnd == std::string::npos)
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
-              const std::string filename = templ->getFileName();
-              const std::string code = getFileString(filename);
-              int cnt = getCurrentLine(code, i);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find the \"" << name << "\" in the file \"" << filename << "\"!" << colorize(NC) << "\n";
+                const std::string filename = templ->getFileName();
+                const std::string code = getFileString(filename);
+                int cnt = getCurrentLine(code, i);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
@@ -1735,18 +1846,24 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
             blockEnd = file.find("{%", blockEndEnd+2);
             if (blockEnd == std::string::npos)
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
-              int cnt = getCurrentLine(file, blockEndEnd);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
+                int cnt = getCurrentLine(file, blockEndEnd);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
             blockEndEnd = file.find("%}", blockEnd);
             if (blockEndEnd == std::string::npos)
             {
-              std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
-              int cnt = getCurrentLine(file, blockEndEnd);
-              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+              if (getLogLevel() <= ERROR)
+              {
+                std::cerr << colorize(RED) << "[TEMPLATE] Error! Cannot find \"endblock\" of the block \"" << name << "\"!" << colorize(NC) << "\n";
+                int cnt = getCurrentLine(file, blockEndEnd);
+                std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+              }
               return false;
             }
 
@@ -1772,11 +1889,14 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           continue;
 
         } else {
-          std::cerr << colorize(RED) << "[TEMPLATE] Unrecognized token \"" << trim(op) << "\"!" << colorize(NC) << "\n";
-          const std::string filename = templ->getFileName();
-          const std::string code = getFileString(filename);
-          int cnt = getCurrentLine(code, i);
-          std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+          {
+            std::cerr << colorize(RED) << "[TEMPLATE] Unrecognized token \"" << trim(op) << "\"!" << colorize(NC) << "\n";
+            const std::string filename = templ->getFileName();
+            const std::string code = getFileString(filename);
+            int cnt = getCurrentLine(code, i);
+            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+          }
           return false;
         }
       }
@@ -1834,10 +1954,13 @@ static bool lexer_analyze(HTMLTemplate* templ, std::string& code, const nlohmann
           auto res = parser_eval(templ, tokens, json);
           if (!res)
           {
-            const std::string filename = templ->getFileName();
-            const std::string code = getFileString(filename);
-            int cnt = getCurrentLine(code, i)-1;
-            std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on line " << cnt << colorize(NC) << "\n";
+            if (getLogLevel() <= ERROR)
+            {
+              const std::string filename = templ->getFileName();
+              const std::string code = getFileString(filename);
+              int cnt = getCurrentLine(code, i)-1;
+              std::cout << colorize(RED) << "[TEMPLATE] Error in '" << filename << "' on the line " << cnt << colorize(NC) << "\n";
+            }
             return false;
           }
           const std::string result = *res;
@@ -1906,7 +2029,8 @@ void HTMLTemplate::renderJSON(const nlohmann::json& json)
   std::string reserve_copy = m_html;
   if (!lexer_analyze(this, reserve_copy, json))
   {
-    std::cout << colorize(RED) << "[TEMPLATE] Rendering error detected! No changes have been made!" << colorize(NC) << "\n";
+    if (getLogLevel() <= ERROR)
+      std::cout << colorize(RED) << "[TEMPLATE] Rendering error detected! No changes have been made!" << colorize(NC) << "\n";
     responce = HTTP_500;
     return;
   }

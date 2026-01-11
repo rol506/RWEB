@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cmath>
 #include <string>
+#include <algorithm>
 
 namespace rweb
 {
@@ -17,7 +18,7 @@ std::string trim(const std::string& str)
   return first == std::string::npos ? "" : str.substr(first, last-first+1);
 }
 
-std::vector<std::string> split(const std::string& s, const std::string& seperator, int maxsplit, bool trimNeeded)
+std::vector<std::string> split(const std::string& s, const std::string& seperators, int maxsplit, bool trimNeeded)
 {
   int spt = maxsplit+1;
   std::vector<std::string> output;
@@ -25,7 +26,7 @@ std::vector<std::string> split(const std::string& s, const std::string& seperato
 
   if (spt <= 0)
   {
-    while ((pos = s.find_first_of(seperator, pos)) != std::string::npos)
+    while ((pos = s.find_first_of(seperators, pos)) != std::string::npos)
     {
       std::string substring;
       if (trimNeeded)
@@ -48,7 +49,62 @@ std::vector<std::string> split(const std::string& s, const std::string& seperato
 
     return output;
   } else {
-    while ((pos = s.find_first_of(seperator, pos)) != std::string::npos && spt > 1)
+    while ((pos = s.find_first_of(seperators, pos)) != std::string::npos && spt > 1)
+    {
+      std::string substring;
+      if (trimNeeded)
+        substring = trim(s.substr(prev_pos, pos-prev_pos));
+      else
+        substring = s.substr(prev_pos, pos-prev_pos);
+
+      if (substring.size() > 0)
+      {
+        output.push_back(substring);
+      }
+      prev_pos = ++pos;
+      spt--;
+    }
+    if (trimNeeded)
+      output.push_back(trim(s.substr(prev_pos, s.size()-prev_pos)));
+    else
+      output.push_back(s.substr(prev_pos, s.size()-prev_pos));
+
+    return output;
+  }
+}
+
+std::vector<std::string> splitByWord(const std::string& s, const std::string& seperator, int maxsplit, bool trimNeeded)
+{
+  int spt = maxsplit+1;
+  std::vector<std::string> output;
+  std::string::size_type prev_pos = 0, pos = 0;
+
+  if (spt <= 0)
+  {
+    while ((pos = s.find(seperator, pos)) != std::string::npos)
+    {
+      std::string substring;
+      if (trimNeeded)
+        substring = trim(s.substr(prev_pos, pos-prev_pos));
+      else
+        substring = s.substr(prev_pos, pos-prev_pos);
+
+      if (substring.size() > 0)
+      {
+        output.push_back(substring);
+      }
+      prev_pos = ++pos;
+    }
+
+    //last word
+    if (trimNeeded)
+      output.push_back(trim(s.substr(prev_pos, pos-prev_pos)));
+    else
+      output.push_back(trim(s.substr(prev_pos, pos-prev_pos)));
+
+    return output;
+  } else {
+    while ((pos = s.find(seperator, pos)) != std::string::npos && spt > 1)
     {
       std::string substring;
       if (trimNeeded)
@@ -131,7 +187,8 @@ static float getOperatorValue(const std::string& oper) noexcept
   if (oper == "%")
     return 0.9f;
 
-  std::cerr << colorize(RED) << "[CALC] Error! Cannot get operator value: " << '"' << oper << '"' << colorize(NC) << "\n";
+  if (getLogLevel() <= ERROR)
+    std::cerr << colorize(RED) << "[CALC] Error! Cannot get operator value: " << '"' << oper << '"' << colorize(NC) << "\n";
   return 0.0f;
 }
 
@@ -150,7 +207,8 @@ static double process(const double left_operand, const double right_operand, con
   if (oper == "%")
     return static_cast<int>(left_operand) % static_cast<int>(right_operand);
 
-  std::cerr << colorize(RED) << "[CALC] Failed to process operation! Unknown operator: " << '"' << oper << '"' << colorize(NC) << "\n";
+  if (getLogLevel() <= ERROR)
+    std::cerr << colorize(RED) << "[CALC] Failed to process operation! Unknown operator: " << '"' << oper << '"' << colorize(NC) << "\n";
   return 0;
 }
 
@@ -166,7 +224,8 @@ static double calculate(std::vector<std::pair<short, std::string>>& tokens, bool
         if (is_ok)
           *is_ok = false;
         else
-          std::cerr << colorize(RED) << "[CALC] Error! Last token is not a math!" << colorize(NC) << "\n";
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[CALC] Error! Last token is not a math!" << colorize(NC) << "\n";
         return 0;
       }
       return std::stod(tokens.begin()->second);
@@ -182,8 +241,8 @@ static double calculate(std::vector<std::pair<short, std::string>>& tokens, bool
         if (is_ok)
           *is_ok = false;
         else
-          std::cerr << colorize(RED) << "[CALC] Error! Operator does not have left operand!" << colorize(NC) << "\n";
-
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[CALC] Error! Operator does not have left operand!" << colorize(NC) << "\n";
         return 0;
       }
       if (i == tokens.size()-1 || tokens[i+1].first != 2) //error
@@ -191,8 +250,8 @@ static double calculate(std::vector<std::pair<short, std::string>>& tokens, bool
         if (is_ok)
           *is_ok = false;
         else
-          std::cerr << colorize(RED) << "[CALC] Error! Operator does not have a right operand!" << colorize(NC) << "\n";
-
+          if (getLogLevel() <= ERROR)
+            std::cerr << colorize(RED) << "[CALC] Error! Operator does not have a right operand!" << colorize(NC) << "\n";
         return 0;
       }
 
@@ -226,7 +285,7 @@ double calculate(const std::string& expression, bool* is_ok)
 {
   if (trim(expression).empty())
   {
-    if (!is_ok)
+    if (!is_ok && getLogLevel() <= WARNING)
       std::cout << colorize(YELLOW) << "[MATH] WARNING! Calculating an empty expression! Result will be 0" << colorize(NC) << "\n";
     return 0;
   }
@@ -242,7 +301,8 @@ double calculate(const std::string& expression, bool* is_ok)
       if (is_ok)
         *is_ok = false;
       else
-        std::cerr << "[CALC] ERROR FOUND UNOPENED BRACKET: " << pos2 << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << "[CALC] ERROR FOUND UNOPENED BRACKET: " << pos2 << "\n";
       return 0;
     }
 
@@ -251,7 +311,8 @@ double calculate(const std::string& expression, bool* is_ok)
       if (is_ok)
         *is_ok = false;
       else
-        std::cerr << "[CALC] ERROR FOUND UNCLOSED BRACKET!\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << "[CALC] ERROR FOUND UNCLOSED BRACKET!\n";
       return 0;
     }
 
@@ -274,7 +335,8 @@ double calculate(const std::string& expression, bool* is_ok)
       if (is_ok)
         *is_ok = false;
       else
-        std::cerr << colorize(RED) << "[MATH] Error! Unallowed character found in the math expression: " << expression << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[MATH] Error! Unallowed character found in the math expression: " << expression << colorize(NC) << "\n";
       return 0;
     }
 
@@ -348,6 +410,20 @@ std::string urlEncode(const std::string &value) {
   }
 
   return escaped.str();
+}
+
+std::string toLower(const std::string& s)
+{
+  std::string data = s;
+  std::transform(data.begin(), data.end(), data.begin(),[](unsigned char c){return std::tolower(c);});
+  return data;
+}
+
+std::string toUpper(const std::string& s)
+{
+  std::string data = s;
+  std::transform(data.begin(), data.end(), data.begin(),[](unsigned char c){return std::toupper(c);});
+  return data;
 }
 
 }

@@ -18,9 +18,6 @@
 #include <signal.h>
 #endif
 
-//if defined RWEB will output every request to the console before parsing it
-//#define RWEB_DEBUG_OUTPUT_REQUEST
-
 namespace rweb
 {
 static std::string resourcePath = "";
@@ -37,12 +34,17 @@ static bool serverDebugMode = false;
 static bool serverProfiling = false;
 static bool serverCompression = false; //not supported yet
 static bool shouldClose = false;
-//static int sockfd; //server socket file descriptor
 static bool initialized = false;
 static std::shared_ptr<Socket> serverSocket;
+static LogLevel serverLogLevel;
+static int maxKeepAliveRequests = 200;
 
-//use in case if you are running app in build folder, but editing source code folder (will step back <level> times to find resource folder)
-static const int sourcePathLevel = 0; //set only at compile time for safety 
+// Initialize default values
+bool Debug::showConnectionLifetime = false;
+bool Debug::disableKeepAliveFix = false;
+bool Debug::disableKeepAlive = false;
+bool Debug::outputRequests = false;
+int Debug::sourcePathLevel = 0;
 
 #ifdef _WIN32
 
@@ -57,6 +59,16 @@ void activateVirtualTerminal()
 }
 #endif
 
+void setLogLevel(const LogLevel level)
+{
+  serverLogLevel = level;
+}
+
+LogLevel getLogLevel()
+{
+  return serverLogLevel;
+}
+
 static const std::string getExecutablePath()
 {
   if (!initialized)
@@ -67,13 +79,17 @@ static const std::string getExecutablePath()
     r = readlink("/proc/self/exe", path, sizeof(path)-1);
     if (r < 0)
     {
-      std::cerr << "[RWEB] Failed to get executable path!\n";
-      std::cerr << describeError() << "\n";
+      if (getLogLevel() <= ERROR)
+      {
+        std::cerr << "[RWEB] Failed to get executable path!\n";
+        std::cerr << describeError() << "\n";
+      }
       throw std::runtime_error("Failed to get executable path");
     }
     execPath = path;
     execPath += "\0";
-    std::cout << "PATH: " << execPath << "\n";
+    if (getLogLevel() <= INFO)
+      std::cout << "PATH: " << execPath << "\n";
     return execPath;
 #elif _WIN32
     char path[2048];
@@ -138,6 +154,8 @@ std::string describeError()
 
     case ENOTSOCK:
       return "File descriptor is not a socket";
+    case EINVAL:
+      return "Invalid argument";
   }
   return std::to_string(errno);
 }
@@ -146,9 +164,8 @@ static const Request parseRequest(const std::string request)
 {
   Request r;
   std::string str = request;
-#ifdef RWEB_DEBUG_OUTPUT_REQUEST
-  std::cout << "request:\n" << request << "\nrequest end\n";
-#endif
+  if (Debug::outputRequests)
+    std::cout << "[DEBUG] REQUEST:\n" << request << "\n[DEBUG] REQUEST END\n";
   std::size_t pos;
 
   //method
@@ -170,6 +187,34 @@ static const Request parseRequest(const std::string request)
   }
   r.protocol = str.substr(0, pos);
   str = str.substr(pos+1);
+
+  //headers
+  pos = str.find_first_not_of("\r\n");
+  if (pos != std::string::npos)
+  {
+    std::size_t newPos = str.find("\r\n\r\n", pos);
+    if (newPos == std::string::npos)
+    {
+      r.isValid = false;
+      return r;
+    }
+
+    std::string headerSection = str.substr(pos, newPos);
+    std::vector<std::string> lines = splitByWord(headerSection, "\r\n", -1, true);
+    for (auto& l : lines)
+    {
+      if (l.empty())
+        continue;
+
+      std::vector<std::string> line = split(l, ":", 1, true);
+      if (line.size() != 2)
+      {
+        r.isValid = false;
+        return r;
+      }
+      r.headers.emplace(line[0], line[1]);
+    }
+  }
 
   if (r.method == "GET")
   {
@@ -243,6 +288,16 @@ static const Request parseRequest(const std::string request)
     }
   }
 
+  {
+    bool keepAlive = true; // Persistent connections are enabled by default in HTTP/1.1
+    auto it = r.headers.find("Connection");
+    if (it != r.headers.end())
+    {
+      keepAlive = toLower(it->second) == "keep-alive";
+    }
+    r.keepAlive = Debug::disableKeepAlive ? false : keepAlive;
+  }
+
   return r;
 }
 
@@ -279,18 +334,24 @@ void addRoute(const std::string& path, const HTTPCallback callback)
       if (pos2 < pos)
       {
         warn = true;
-        std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>') before opening sign ('<')!\n";
-        std::cout << "[RWEB] Path: '" << path << "'\n";
-        std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+        if (getLogLevel() <= WARNING)
+        {
+          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>') before opening sign ('<')!\n";
+          std::cout << "[RWEB] Path: '" << path << "'\n";
+          std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+        }
         break;
       }
 
       if (pos2 == std::string::npos)
       {
         warn = true;
-        std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg opening sign ('<'), but did not contain closing sign ('>').\n";
-        std::cout << "[RWEB] Path: '" << path << "'\n";
-        std::cout << "[RWEB] Did you forget to close the arg?" << colorize(NC) << "\n";
+        if (getLogLevel() <= WARNING)
+        {
+          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg opening sign ('<'), but did not contain closing sign ('>').\n";
+          std::cout << "[RWEB] Path: '" << path << "'\n";
+          std::cout << "[RWEB] Did you forget to close the arg?" << colorize(NC) << "\n";
+        }
         break;
       } else {
         const std::string tmp = path.substr(pos, pos2-pos);
@@ -298,9 +359,12 @@ void addRoute(const std::string& path, const HTTPCallback callback)
         if (tmpos != std::string::npos)
         {
           warn = true;
-          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains '/' in the arg name!\n";
-          std::cout << "[RWEB] Path: '" << path << "'\n";
-          std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+          if (getLogLevel() <= WARNING)
+          {
+            std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains '/' in the arg name!\n";
+            std::cout << "[RWEB] Path: '" << path << "'\n";
+            std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+          }
           break;
         }
       }
@@ -312,9 +376,12 @@ void addRoute(const std::string& path, const HTTPCallback callback)
     if (pos2 != std::string::npos)
     {
       warn = true;
-      std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>'), but did not contain opening sign ('<').\n";
-      std::cout << "[RWEB] Path: '" << path << "'\n";
-      std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+      if (getLogLevel() <= WARNING)
+      {
+        std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path contains arg closing sign ('>'), but did not contain opening sign ('<').\n";
+        std::cout << "[RWEB] Path: '" << path << "'\n";
+        std::cout << "[RWEB] Regular paths must not contain '<' and '>'. RWEB uses them for url args!" << colorize(NC) << "\n";
+      }
     }
   }
 
@@ -330,16 +397,19 @@ void addRoute(const std::string& path, const HTTPCallback callback)
         if (pos != 0 || pos2+1 != it.size())
         {
           warn = true;
-          std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path block contains unwanted text!\n";
-          std::cout << "[RWEB] Block: '" << it << "'. Should be '" << it.substr(pos, pos2-pos+1) << "'" << colorize(NC) << "\n";
+          if (getLogLevel() <= WARNING)
+          {
+            std::cout << colorize(YELLOW) << "[RWEB] Warning! Route path block contains unwanted text!\n";
+            std::cout << "[RWEB] Block: '" << it << "'. Should be '" << it.substr(pos, pos2-pos+1) << "'" << colorize(NC) << "\n";
+          }
         }
       }
     }
-    if (warn)
+    if (warn) // Ignores log level for safety
       std::cout << colorize(YELLOW) << "[RWEB] Path: '" << urlPath << "'" << colorize(NC) << "\n";
   }
 
-  if (warn)
+  if (warn) // Ignores log level for safety
   {
     std::cout << colorize(YELLOW) << "[RWEB] Path warnings detected! Path will be used as a regular path!\n";
     //std::cout << "[RWEB] Path: '" << path << "'" << colorize(NC) << "\n";
@@ -418,13 +488,6 @@ void setErrorHandler(const int code, const HTTPCallback callback)
   }
 }
 
-HTMLTemplate redirect(const std::string& location, const std::string& statusResponce)
-{
-  HTMLTemplate temp = createTemplate("", statusResponce);
-  temp.m_location = location;
-  return temp;
-}
-
 void setPort(const int port)
 {
   serverPort = port;
@@ -464,7 +527,8 @@ const char *colorize(int color) {
 
   if (!initialized)
   {
-    std::cerr << "[ERROR RWEB IS NOT INITIALIZED]\n";
+    if (getLogLevel() <= ERROR)
+      std::cerr << "[ERROR] RWEB IS NOT INITIALIZED\n";
     return "\033[0m";
   }
 #ifdef __linux__
@@ -485,27 +549,15 @@ const char *colorize(int color) {
 #endif
 }
 
-static const std::string sendFile(const std::string& statusResponce, const std::string& filePath, const std::string& contentType)
-{
-  std::string file = getFileString(filePath);
-  if (file.empty())
-  {
-    return HTTP_404 + "\r\n";
-  }
-  return statusResponce + "Content-Type: " + contentType + "\r\nContent-Length: " + std::to_string(file.size()) + "\r\nContent-Encoding: utf-8\r\n"
-  + "\r\n" + file;
-}
-
-static const std::string sendData(const std::string& statusResponce, const std::string& data, const std::string contentType)
-{
-  return statusResponce + "Content-Type: " + contentType + "\r\nContent-Length: " + std::to_string(data.size()) + "\r\nContent-Encoding: utf-8\r\n"
-  + "\r\n" + data;
-}
-
 //returns false on an error (step <level> times back to find resource folder. use only for dev purposes)
 bool init(bool debug, unsigned int level)
 {
   serverDebugMode = debug;
+  Debug::showConnectionLifetime = false;
+  Debug::disableKeepAliveFix = false;
+  Debug::disableKeepAlive = false;
+  Debug::outputRequests = false;
+  Debug::sourcePathLevel = level;
 
 #ifdef __linux
   signal(SIGINT, closeServer);
@@ -519,7 +571,7 @@ bool init(bool debug, unsigned int level)
   }
 #endif
   //resource path
-  setResourcePath(calculateResourcePath(getDebugState() ? level : 0));
+  setResourcePath(calculateResourcePath(getDebugState() ? Debug::sourcePathLevel : 0));
   initialized = true;
   std::cout << colorize(NC);
   return true;
@@ -534,7 +586,7 @@ static unsigned long long getEmptySessionID()
   return nextSessionID-1;
 }
 
-static const std::string handleRequest(const HTTPCallback callback, const Request r, const std::string& initialStatus=HTTP_200)
+static const std::string handleRequest(const HTTPCallback callback, Request& r, const std::string& initialStatus=HTTP_200)
 {
   HTMLTemplate temp; 
 
@@ -568,6 +620,11 @@ static const std::string handleRequest(const HTTPCallback callback, const Reques
 
   const std::string code = temp.getStatusResponce().substr(9, 3);
   std::string res = "";
+  if (code[0] == '3' && !Debug::disableKeepAliveFix)
+  {
+    // TEMPORARY FIX
+    r.keepAlive = false;
+  }
 
   if (!temp.getHTML().empty())
   {
@@ -577,6 +634,13 @@ static const std::string handleRequest(const HTTPCallback callback, const Reques
   }
 
   //---ADDITIONAL HEADERS---
+  if (r.keepAlive)
+    res += "Connection: keep-alive\r\n";
+  else
+    res += "Connection: close\r\n";
+
+  res += "Keep-Alive: timeout=" + std::to_string(serverSocket->timeout) + ", max=" + std::to_string(maxKeepAliveRequests) + "\r\n";
+
   res += temp.getAllCookieHeaders(); // \r\n included
 
   if (code[0] == '3')
@@ -584,6 +648,7 @@ static const std::string handleRequest(const HTTPCallback callback, const Reques
     res += "Location: " + temp.getRedirectLocation() + "\r\n";
   }
 
+  //---BODY---
   res += "\r\n";
   res += temp.getHTML();
 
@@ -599,23 +664,29 @@ static const std::string handleRequest(const HTTPCallback callback, const Reques
     }
 
     res = temp.getStatusResponce();
-    std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
-    std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
-
-    if (initialStatus != HTTP_200)
+    if (getLogLevel() <= INFO)
     {
-      std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+      std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED);
+      std::cout << r.path << colorize(NC) << " -- " << temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+
+      if (initialStatus != HTTP_200)
+      {
+        std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+      }
     }
 
     return res;
   }
 
-  std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
-    temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
-
-  if (initialStatus != HTTP_200)
+  if (getLogLevel() <= INFO)
   {
-    std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+    std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << 
+      temp.getStatusResponce().substr(9, temp.getStatusResponce().size()-11);
+
+    if (initialStatus != HTTP_200)
+    {
+      std::cout << " -- Handled " << initialStatus.substr(9, initialStatus.size()-11);
+    }
   }
 
   return res;
@@ -636,7 +707,8 @@ static void handleClient(Request r, const SOCKFD newsockfd)
     {
       res = handleRequest(it->second, r, HTTP_400); 
     } else {
-      res = HTTP_400 + "\r\n";
+      res = HTTP_400 + "Connection: " + (r.keepAlive ? "keep-alive" : "close") + "\r\n" + // use default value of r.keepAlive
+        "Keep-Alive: timeout=" + std::to_string(serverSocket->timeout) + ", max=" + std::to_string(maxKeepAliveRequests) + "\r\n\r\n";
       std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_400.substr(9, HTTP_400.size()-11);
     }
   } else {
@@ -647,8 +719,18 @@ static void handleClient(Request r, const SOCKFD newsockfd)
       auto it2 = serverResources.find(r.path);
       if (it2 != serverResources.end())
       {
-        res = sendFile(HTTP_200, it2->second.first, it2->second.second);
-        std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
+        std::string file = getFileString(it2->second.first);
+        if (file.empty())
+        {
+          res = HTTP_404 + "Connection: " + (r.keepAlive ? "keep-alive" : "close") + "\r\n\r\n";
+        }
+        res = HTTP_200 + "Content-Type: " + it2->second.second + 
+          "\r\nContent-Length: " + std::to_string(file.size()) + "\r\nContent-Encoding: utf-8\r\n" +
+          "Connection: " + (r.keepAlive ? "keep-alive" : "close") + "\r\n" +
+          "Keep-Alive: timeout=" + std::to_string(serverSocket->timeout) + ", max=" + std::to_string(maxKeepAliveRequests) + "\r\n" + 
+          "\r\n" + file;
+        if (getLogLevel() <= INFO)
+          std::cout << "[RESPONCE] " << r.method << " -- " << colorize(CYAN) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
       } else { 
 
         std::string path = r.path;
@@ -675,8 +757,12 @@ static void handleClient(Request r, const SOCKFD newsockfd)
             {
               found = false;
             } else {
-              res = sendData(HTTP_200, data, it3->second.second);
-              std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
+              res = HTTP_200 + "Content-Type: " + it3->second.second + "\r\nContent-Length: " + std::to_string(data.size()) + "\r\nContent-Encoding: utf-8\r\n" +
+                "Connection: " + (r.keepAlive ? "keep-alive" : "close") + "\r\n" + 
+                "Keep-Alive: timeout=" + std::to_string(serverSocket->timeout) + ", max=" + std::to_string(maxKeepAliveRequests) + "\r\n" +
+                "\r\n" + data;
+              if (getLogLevel() <= INFO)
+                std::cout << "[RESPONCE] " << r.method << " -- " << colorize(NC) << r.path << colorize(NC) << " -- " << HTTP_200.substr(9, HTTP_200.size()-11);
               found = true;
             }
           }
@@ -724,8 +810,10 @@ static void handleClient(Request r, const SOCKFD newsockfd)
           {
             res = handleRequest(it->second, r, HTTP_404);
           } else { 
-            res = HTTP_404 + "\r\n";
-            std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
+            res = HTTP_404 + "Connection: " + (r.keepAlive ? "keep-alive" : "close") + "\r\n"
+              "Keep-Alive: timeout=" + std::to_string(serverSocket->timeout) + ", max=" + std::to_string(maxKeepAliveRequests) + "\r\n\r\n";
+            if (getLogLevel() <= INFO)
+              std::cout << "[RESPONCE] " << r.method << " -- " << colorize(RED) << r.path << colorize(NC) << " -- " << HTTP_404.substr(9, HTTP_404.size()-11);
           }
         }
       }
@@ -734,34 +822,68 @@ static void handleClient(Request r, const SOCKFD newsockfd)
     }
   }
 
-  if (getDebugState() && getProfilingMode())
+  if (getDebugState() && getProfilingMode() && getLogLevel() <= INFO)
   {
     const double timeDelta = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - startTime).count();
     std::cout << colorize(NC) << " -- " << timeDelta << "ms\n";
   } else {
-    std::cout << "\n";
+    if (getLogLevel() <= INFO)
+      std::cout << "\n";
   }
 
   //send result
-  serverSocket->sendMessage(newsockfd, res);
-  Socket::closeSocket(newsockfd);
-  return; 
+  //std::cout << "sending responce " << res.size() << " bytes\n";
+  if (!serverSocket->sendMessage(newsockfd, res))
+  {
+    if (getLogLevel() <= ERROR)
+      std::cout << "[ERROR] Failed to send the responce!\n";
+    r.keepAlive = false; // do not try to keep this connection alive
+  }
+  //std::cout << replace(res, "\r\n", "\\r\\n\n") << "\n";
+
+  if (!r.keepAlive)
+  {
+    Socket::closeSocket(newsockfd);
+    return; 
+  }
+
+  {
+    if (getShouldClose())
+    {
+      Socket::closeSocket(newsockfd);
+      return;
+    }
+    std::string request = trim(serverSocket->getMessage(newsockfd));
+    //std::string request = "";
+    if (request.empty())
+    {
+      // Socket automatically closes on timeout or an error
+      return;
+    }
+
+    Request req = parseRequest(request);
+
+    std::thread th(handleClient, req, newsockfd);
+    th.detach();
+    return;
+  }
 }
 
 //returns false on an error
-bool startServer(const int clientQueue)
+bool startServer(const int clientQueue, const int timeoutSeconds)
 {
 
-  serverSocket = std::make_shared<Socket>(clientQueue);
+  serverSocket = std::make_shared<Socket>(clientQueue, timeoutSeconds);
 
   while (!getShouldClose())
   {
     std::optional<SOCKFD> newSockOpt = serverSocket->acceptClient();
     if (!newSockOpt)
     {
-      if (errno != 11 && (errno != 4 && getShouldClose()))
+      if (errno != 11 && (errno != 4 && getShouldClose()) && !getShouldClose())
       {
-        std::cerr << colorize(RED) << "[ERROR] accept failed: " << describeError() << colorize(NC) << "\n";
+        if (getLogLevel() <= ERROR)
+          std::cerr << colorize(RED) << "[ERROR] accept failed: " << describeError() << colorize(NC) << "\n";
       }
       continue;
     }
@@ -775,8 +897,6 @@ bool startServer(const int clientQueue)
     std::string request = trim(serverSocket->getMessage(newSock));
     if (request.empty())
     {
-      std::cerr << colorize(YELLOW) << "[WARNING] Skipping empty request!" << colorize(NC) << "\n";
-      Socket::closeSocket(newSock);
       continue;
     }
 
@@ -856,7 +976,8 @@ HTMLTemplate createTemplate(const std::string& templatePath, const std::string& 
     resp = statusResponce;
     if (file.empty())
     {
-      std::cerr << "[TEMPLATE] File " << templatePath << " is empty!\n";
+      if (getLogLevel() <= ERROR)
+        std::cerr << "[TEMPLATE] File " << templatePath << " is empty!\n";
       resp = HTTP_500;
     }
   } else {
@@ -869,6 +990,13 @@ HTMLTemplate createTemplate(const std::string& templatePath, const std::string& 
   temp.encoding = templatePath == "" ? "" : "utf-8";
   temp.responce = resp;
   temp.m_templateFileName = templatePath;
+  return temp;
+}
+
+HTMLTemplate redirect(const std::string& location, const std::string& statusResponce)
+{
+  HTMLTemplate temp = createTemplate("", statusResponce);
+  temp.m_location = location;
   return temp;
 }
 
@@ -903,6 +1031,7 @@ Session& getSession(const Request& r)
 void clearAllSessions()
 {
   sessions.clear();
-  std::cout << colorize(YELLOW) << "[SERVER] All sessions are cleared!" << colorize(NC) << "\n";
+  if (getLogLevel() <= WARNING)
+    std::cout << colorize(YELLOW) << "[SERVER] All sessions are cleared!" << colorize(NC) << "\n";
 }
 }

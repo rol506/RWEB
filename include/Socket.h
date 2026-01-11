@@ -27,12 +27,14 @@ struct SOCKFD
 class Socket
 {
 public: 
-  Socket(int clientQueue);
+  Socket(int clientQueue, int timeoutSeconds=20);
   ~Socket();
   std::optional<SOCKFD> acceptClient();
   bool sendMessage(SOCKFD clientSocket, const std::string& message);
   std::string getMessage(SOCKFD clientSocket);
   static void closeSocket(SOCKFD socket);
+
+  const int timeout; // connection timeout in seconds
 
 private:
 
